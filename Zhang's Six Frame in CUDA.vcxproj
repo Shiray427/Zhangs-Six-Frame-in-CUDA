@@ -63,6 +63,7 @@
       <UseHostInclude>false</UseHostInclude>
       <Runtime>InheritFromHost</Runtime>
       <CudaRuntime>Static</CudaRuntime>
+      <CodeGeneration>compute_75,sm_75;compute_89,sm_89;compute_86,sm_86</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -86,6 +87,7 @@
       <UseHostInclude>false</UseHostInclude>
       <Runtime>InheritFromHost</Runtime>
       <CudaRuntime>Static</CudaRuntime>
+      <CodeGeneration>compute_75,sm_75;compute_89,sm_89;compute_86,sm_86</CodeGeneration>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
