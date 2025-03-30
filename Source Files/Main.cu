@@ -1614,7 +1614,7 @@ int main()
                 dim3 blockDimMain(32, 32);
                 dim3 gridDimMain(1);
 				dim3 blockDimLastRow(1024);
-                dim3 gridDimLastRow((M + blockDimLastRow.x - 1) / blockDimLastRow.x);
+                dim3 gridDimLastRow(((unsigned int)M + blockDimLastRow.x - 1) / blockDimLastRow.x);
 
 
 				unsigned int submatrixSide = blockDimMain.x;
