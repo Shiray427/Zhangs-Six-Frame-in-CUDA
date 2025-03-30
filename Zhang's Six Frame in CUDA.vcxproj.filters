@@ -1,0 +1,49 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{6ae2a3fb-4ff5-48eb-aceb-1caf6c625c27}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{35d0a3da-078a-4a67-8814-8ddbd0bdbd7f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{f7b42094-a747-4821-9b0e-04b271f3a722}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <CudaCompile Include="Source Files\Main.cu">
+      <Filter>Source Files</Filter>
+    </CudaCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Header Files\gputimer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="Resource Files\BLOSUM62.txt">
+      <Filter>Resource Files</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resource Files\Fruit_Fly_DNA_Final.fasta">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Resource Files\Fruit_Fly_Protein_Final.fasta">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Resource Files\Mouse_Crest_DNA_Final.fasta">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Resource Files\Mouse_Crest_Protein_Final.fasta">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Resource Files\testDNA.fasta">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Resource Files\testProt.fasta">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>
