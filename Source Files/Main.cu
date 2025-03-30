@@ -1349,28 +1349,6 @@ void traceV2_global(string input_seq, string ref_seq, int** sc_mat, int** t_sc_m
 
 }
 
-void print2D(size_t N, size_t M, int** mat, string matrix) {
-	cout << matrix << endl;
-	for (size_t i = 0; i < N; i++) {
-		for (size_t j = 0; j < M; j++) {
-			cout << mat[i][j] << "\t";
-		}
-		cout << endl;
-	}
-	cout << endl;
-}
-
-void print1D(size_t N, size_t M, int* mat, string matrix) {
-	cout << matrix << endl;
-	for (size_t i = 0; i < N; i++) {
-		for (size_t j = 0; j < M; j++) {
-			cout << mat[i * M + j] << "\t";
-		}
-		cout << endl;
-	}
-	cout << endl;
-}
-
 
 int main()
 {
@@ -1614,7 +1592,7 @@ int main()
                 dim3 blockDimMain(32, 32);
                 dim3 gridDimMain(1);
 				dim3 blockDimLastRow(1024);
-                dim3 gridDimLastRow(((unsigned int)M + blockDimLastRow.x - 1) / blockDimLastRow.x);
+                dim3 gridDimLastRow(((unsigned int)(M - 1) + blockDimLastRow.x - 1) / blockDimLastRow.x);
 
 
 				unsigned int submatrixSide = blockDimMain.x;
