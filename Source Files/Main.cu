@@ -1560,11 +1560,12 @@ int main()
                     if (top == 0) {
 						traceV2_check(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
                         auto diff = end - start;
-                        cout << "Run:" << index_dna << " " << index_prot << endl << "Time in ms : " << duration<double, milli>(diff).count() << endl;
+                        //memcpy(sc_mat_hold, sc_mat, N * M * sizeof(int));
+                        //memcpy(t_sc_mat_hold, t_sc_mat, N* M * sizeof(int));
                         score_top1 = top1(index[0], index_prot, index[1], index[2]);
-                        copy(&sc_mat[0][0], &sc_mat[0][0] + N * M, &sc_mat_hold[0][0]);
-                        copy(&t_sc_mat[0][0], &t_sc_mat[0][0] + N * M, &t_sc_mat_hold[0][0]);
-                        traceV2_print(DNA_sequence, protein_sequence, sc_mat_hold, t_sc_mat_hold, score_top1);
+                        traceV2_print(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, score_top1);
+                        cout << "Run:" << index_dna << " " << index_prot << endl << "Time in ms : " << duration<double, milli>(diff).count() << endl;
+                        
                     }
 					else if (top == 1) {
                         traceV2_check(DNA_sequence_r, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
