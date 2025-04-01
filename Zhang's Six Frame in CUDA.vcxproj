@@ -92,6 +92,7 @@
       <Runtime>MT</Runtime>
       <CudaRuntime>Static</CudaRuntime>
       <CodeGeneration>compute_75,sm_75;compute_89,sm_89;compute_86,sm_86</CodeGeneration>
+      <Optimization>O3</Optimization>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
