@@ -37,7 +37,7 @@ constexpr int gep = 2; // opening penalty
 constexpr int gop = 3; // extend penalty
 constexpr int shift = 4; // shift penalty
 constexpr int infn = -999;
-int myArray[40000][5];
+string myArray[40000][5];
 
 int blosum62mat[24][24];
 __device__ __constant__ int d_blosum62mat[24][24];
@@ -273,6 +273,25 @@ vector<string> readFastaSequences(const string& filename) {
     file.close();
 
     return sequences;
+}
+
+vector<string> readFastaIDs(const string& filename) {
+    ifstream file("./Resource Files/" + filename + ".fasta");
+    vector<string> sequenceIDs;
+    string line;
+
+    if (!file) {
+        cerr << "Error: Unable to open file " << filename << endl;
+        return sequenceIDs;
+    }
+
+    while (getline(file, line)) {
+        if (!line.empty() && line[0] == '>') {
+            sequenceIDs.push_back(line.substr(1)); // Remove '>' and store only the ID
+        }
+    }
+
+    return sequenceIDs;
 }
 
 void init_local_v2(string input_seq, string ref_seq, int** sc_mat, int** ins_mat, int** del_mat, int** t_sc_mat, int** t_ins_mat, int** t_del_mat) {
@@ -745,63 +764,6 @@ void top5(int score, int index, int top_i, int top_j, int* score_top, int* top_i
     }
 }
 
-
-void top5_1d(int* sc_mat, int N, int M, int* top_scores, int* top_i_max, int* top_j_max) {
-
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < M; j++) {
-            int current_score = sc_mat[i * M + j];
-
-            for (int x = 0; x < 5; x++) {
-                if (current_score > top_scores[x]) {
-
-                    for (int y = 4; y > x; y--) {
-                        top_scores[y] = top_scores[y - 1];
-                        top_i_max[y] = top_i_max[y - 1];
-                        top_j_max[y] = top_j_max[y - 1];
-                    }
-
-                    top_scores[x] = current_score;
-                    top_i_max[x] = i;
-                    top_j_max[x] = j;
-
-                    break;
-                }
-            }
-        }
-    }
-}
-
-int* top1_save(int score, int index, int top_i_max, int top_j_max,int** sc_mat, int** t_sc_mat, int** sc_mat_hold, int** t_sc_mat_hold, int N, int M) {
-    N = (int)N;
-    M = (int)M;
-    int score_top[4];
-    if (score > score_top[0]) {
-        score_top[0] = score;
-        score_top[1] = top_i_max;
-        score_top[2] = top_j_max;
-        score_top[3] = index;
-    }
-
-    for (int i = 0; i < N; ++i) {
-        for (int j = 0; j < M; ++j) {
-            sc_mat[i][j] = sc_mat_hold[i][j];
-            t_sc_mat[i][j] = t_sc_mat_hold[i][j];
-        }
-    }
-
-    return score_top;
-}
-
-void top1(int score, int index, int top_i_max, int top_j_max, int* score_top) {
-    if (score > score_top[0]) {
-        score_top[0] = score;
-        score_top[1] = top_i_max;
-        score_top[2] = top_j_max;
-        score_top[3] = index;
-    }
-}
-
 void routine(int trace, int& i, int& j, string str, string ref_seq, string& final_seq1, string& final_seq2, string& frameshift) {
     int k = 0;
     if (trace == -2) {
@@ -905,11 +867,9 @@ void traceV2(string input_seq, string ref_seq, int** sc_mat, int** t_sc_mat, siz
     indeces[1] = i_max;
     indeces[2] = j_max;
 
-    //myArray[index][0] = to_string(max_score);
-    //myArray[index][2] = to_string(j_max);
 
     while (sc_mat[i][j] != 0) {
-        //myArray[index][1] = to_string(j);
+        myArray[index][1] = to_string(j);
         routine(t_sc_mat[i][j], i, j, input_seq, ref_seq, seq_dna, seq_prot, frameshift);
     }
 
@@ -977,6 +937,9 @@ void traceV2_check(string input_seq, string ref_seq, int** sc_mat, int** t_sc_ma
     indeces[1] = i_max;
     indeces[2] = j_max;
 
+    myArray[index][0] = to_string(max_score);
+    myArray[index][2] = to_string(j_max);
+
 }
 
 void traceV2_1d(string input_seq, string ref_seq, int* sc_mat, int* t_sc_mat, int N, int M, int index, int* indeces) {
@@ -1003,15 +966,11 @@ void traceV2_1d(string input_seq, string ref_seq, int* sc_mat, int* t_sc_mat, in
     indeces[1] = i_max;
     indeces[2] = j_max;
 
-    //myArray[index][0] = to_string(max_score);
-    //myArray[index][2] = to_string(j_max);
-
-    printf("%d %d %d\n", sc_mat[i * M + j], i_max, j_max);
     while (sc_mat[i * M + j] != 0) {
 
         int score_tc;
         score_tc = t_sc_mat[i * M + j];
-        //myArray[index][1] = to_string(j);
+        myArray[index][1] = to_string(j);
         routine(t_sc_mat[i * M + j], i, j, input_seq, ref_seq, seq_dna, seq_prot, frameshift);
     }
 
@@ -1078,13 +1037,16 @@ void traceV2_1d_check(string input_seq, string ref_seq, int* sc_mat, int* t_sc_m
     indeces[1] = i_max;
     indeces[2] = j_max;
 
+    myArray[index][0] = to_string(max_score);
+    myArray[index][2] = to_string(j_max);
+
 }
 
 
 int main()
 {
     int mode, frame, top, device;
-    vector<string> dnaInputs, proteinInputs;
+    vector<string> dnaInputs, proteinInputs, proteinIdInputs;
     string protein_sequence, DNA_sequence, DNA_sequence_r, file_name;
     cudaDeviceProp prop;
     GpuTimer timer;
@@ -1104,7 +1066,8 @@ int main()
         cin >> file_name;
 
         proteinInputs = readFastaSequences(file_name);
-        if (!proteinInputs.empty()) {
+        proteinIdInputs = readFastaIDs(file_name);
+        if (!proteinInputs.empty() && !proteinIdInputs.empty()) {
             break;
         }
     } while (true);
@@ -1151,7 +1114,7 @@ int main()
 
     } while (true);
 
-    for (int index_dna = 0; index_dna < dnaInputs.size(); index_dna++) {
+    for (int index_dna = 4; index_dna < 5; index_dna++) {
 
         int* score_top1 = new int [5] {};
         int* top_scores = new int[5] {};
@@ -1207,12 +1170,7 @@ int main()
                 auto diff = end - start;
 
                 traceV2_check(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
-
-                if (top == 0) 
-                    top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
-				else if (top == 1)
-					top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
-                
+                top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
                 cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << duration<double, milli>(diff).count() << endl;
                     
 				if (frame == 6) {
@@ -1224,12 +1182,7 @@ int main()
                     auto diff = end - start;
 
                     traceV2_check(DNA_sequence_r, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
-
-					if (top == 0) 
-                        top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
-					else if (top == 1) 
-                        top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
-
+                    top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << duration<double, milli>(diff).count() << endl;
 				}
 
@@ -1312,20 +1265,12 @@ int main()
                     }
                     checkCudaErrors(cudaDeviceSynchronize());
                 }
-                timer.Stop();                    
+                timer.Stop();        
 
-                if (top == 0) {
-					traceV2_1d_check(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
-                    cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
-                    top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
-                    cout << index[0] << endl;
-				}
-				else if (top == 1) {
-                    traceV2_1d_check(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
-                    cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
-                    top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
-				}
-                        
+                traceV2_1d_check(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
+                cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
+                top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
+   
 				if (frame == 6) {
 					init_local_v2_cuda(DNA_sequence_r, protein_sequence, u_sc_mat, u_ins_mat, u_del_mat, u_t_sc_mat, u_t_ins_mat, u_t_del_mat, N, M);
 						
@@ -1339,18 +1284,10 @@ int main()
                         checkCudaErrors(cudaDeviceSynchronize());
                     }
 					timer.Stop();
-						
-                    if (top == 0) {
-						traceV2_1d_check(DNA_sequence_r, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
-                        cout << "Time in ms: " << timer.Elapsed() << endl;
-                        top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
-					}
-					else if (top == 1) {
-                        traceV2_1d_check(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
-                        cout << "Time in ms: " << timer.Elapsed() << endl;
-                        top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
-                        
-					}
+
+                    traceV2_1d_check(DNA_sequence_r, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
+                    cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
+                    top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
 				}
 				
 
@@ -1383,7 +1320,7 @@ int main()
                 top_hold = top_scores[0];
 
                 if (mode == 0 && top_hold == top_scores[i]) {
-
+                    cout << proteinIdInputs[top_indeces[i]] << endl << "Sequence: " << top_indeces[i] << endl;
                     int** sc_mat = new int* [N];
                     int** ins_mat = new int* [N];
                     int** del_mat = new int* [N];
@@ -1412,6 +1349,9 @@ int main()
                     auto end = steady_clock::now();
                     auto diff = end - start;
                     traceV2(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                    cout << endl << "Score: " << top_scores[i] << endl;
+                    cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                    cout << "Time in ms: " << duration<double, milli>(diff).count() << endl << endl;
 
                     for (int i = 0; i < N_size; i++) {
                         delete[] sc_mat[i];
@@ -1435,7 +1375,7 @@ int main()
 
                 }
                 else if (mode == 1 && top_hold == top_scores[i]) {
-                    cout << top_scores[i] << " " << top_i[i] << " " << top_j[i] << " " << top_indeces[i] << endl;
+                    cout << proteinIdInputs[top_indeces[i]] << endl << "Sequence: " << top_indeces[i] << endl;
                     char* d_DNA_sequence;
                     char* d_protein_sequence;
                     char* d_DNA_sequence_r;
@@ -1494,9 +1434,10 @@ int main()
                         checkCudaErrors(cudaDeviceSynchronize());
                     }
                     timer.Stop();
-
                     traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, top_indeces[i], index);
-                    cout << "Time in ms: " << timer.Elapsed() << endl;
+                    cout << endl << "Score: " << top_scores[i] << endl;
+                    cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                    cout << "Time in ms: " << timer.Elapsed() << endl << endl;
 
                     checkCudaErrors(cudaFree(d_DNA_sequence));
                     checkCudaErrors(cudaFree(d_protein_sequence));
@@ -1515,7 +1456,7 @@ int main()
         }
         else if (top == 1) {
             for (int i = 0; i < 5; i++) {
-                cout << top_scores[i] << " " << top_i[i] << " " << top_j[i] << endl;
+                cout << proteinIdInputs[top_indeces[i]] << endl << "Sequence: " << top_indeces[i] << endl;
                 DNA_sequence = dnaInputs[index_dna];
                 protein_sequence = proteinInputs[top_indeces[i]];
                 DNA_sequence_r = reverse_complement(DNA_sequence);
@@ -1557,6 +1498,9 @@ int main()
                     auto end = steady_clock::now();
                     auto diff = end - start;
                     traceV2(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                    cout << endl << "Score: " << top_scores[i] << endl;
+                    cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                    cout << "Time in ms: " << duration<double, milli>(diff).count() << endl << endl;
 
                     for (int i = 0; i < N_size; i++) {
                         delete[] sc_mat[i];
@@ -1641,7 +1585,9 @@ int main()
                     timer.Stop();
 
                     traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, top_indeces[i], index);
-                    cout << "Time in ms: " << timer.Elapsed() << endl;
+                    cout << endl << "Score: " << top_scores[i] << endl;
+                    cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                    cout << "Time in ms: " << timer.Elapsed() << endl << endl;
 
                     checkCudaErrors(cudaFree(d_DNA_sequence));
                     checkCudaErrors(cudaFree(d_protein_sequence));
