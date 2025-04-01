@@ -727,7 +727,7 @@ __global__ void scoring_local_v2_cuda(const char* input_seq, const char* ref_seq
 void top5(int score, int index, int top_i, int top_j, int* score_top, int* top_i_max, int* top_j_max, int* top_indices) {
     // Check if the new score belongs in the top 5
     for (int x = 0; x < 5; x++) {
-        if (score > score_top[x]) {
+        if (score >= score_top[x]) {
             for (int y = 4; y > x; y--) {
                 score_top[y] = score_top[y - 1];
                 top_i_max[y] = top_i_max[y - 1];
@@ -1151,7 +1151,7 @@ int main()
 
     } while (true);
 
-    for (int index_dna = 3; index_dna < 4; index_dna++) {
+    for (int index_dna = 0; index_dna < dnaInputs.size(); index_dna++) {
 
         int* score_top1 = new int [5] {};
         int* top_scores = new int[5] {};
@@ -1159,6 +1159,7 @@ int main()
         int* top_j = new int[5] {};
         int* top_indeces = new int[5] {};
         int* index = new int[4] {};
+        int top_hold = 0;
 
         for (int index_prot = 0; index_prot < proteinInputs.size(); index_prot++) {
 
@@ -1172,6 +1173,7 @@ int main()
             size_t N_size = N * sizeof(char);
             size_t M_size = M * sizeof(char);
 			size_t size = N * M * sizeof(int);
+            
 
             if (mode == 0) {
 
@@ -1207,7 +1209,7 @@ int main()
                 traceV2_check(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
 
                 if (top == 0) 
-                    top1(index[0], index_prot, index[1], index[2], score_top1);
+                    top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
 				else if (top == 1)
 					top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
                 
@@ -1224,7 +1226,7 @@ int main()
                     traceV2_check(DNA_sequence_r, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
 
 					if (top == 0) 
-                        top1(index[0], index_prot, index[1], index[2], score_top1);
+                        top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
 					else if (top == 1) 
                         top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
 
@@ -1315,12 +1317,13 @@ int main()
                 if (top == 0) {
 					traceV2_1d_check(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
-                    top1(index[0], index_prot, index[1], index[2], score_top1);
+                    top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
+                    cout << index[0] << endl;
 				}
 				else if (top == 1) {
                     traceV2_1d_check(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
-                    top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
+                    top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
 				}
                         
 				if (frame == 6) {
@@ -1340,12 +1343,13 @@ int main()
                     if (top == 0) {
 						traceV2_1d_check(DNA_sequence_r, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
                         cout << "Time in ms: " << timer.Elapsed() << endl;
-                        top1(index[0], index_prot, index[1], index[2], score_top1);
+                        top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
 					}
 					else if (top == 1) {
                         traceV2_1d_check(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
                         cout << "Time in ms: " << timer.Elapsed() << endl;
-                        top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
+                        top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
+                        
 					}
 				}
 				
@@ -1365,146 +1369,148 @@ int main()
         }
 
         if (top == 0) {
-            DNA_sequence = dnaInputs[index_dna];
-            protein_sequence = proteinInputs[score_top1[3]];
-            DNA_sequence_r = reverse_complement(DNA_sequence);
+            for (int i = 0; i < 5; i++) {
+                DNA_sequence = dnaInputs[index_dna];
+                protein_sequence = proteinInputs[top_indeces[i]];
+                DNA_sequence_r = reverse_complement(DNA_sequence);
 
-            size_t N = DNA_sequence.length();
-            size_t M = protein_sequence.length() + 1;
+                size_t N = DNA_sequence.length();
+                size_t M = protein_sequence.length() + 1;
 
-            size_t N_size = N * sizeof(char);
-            size_t M_size = M * sizeof(char);
-            size_t size = N * M * sizeof(int);
-            cout << score_top1[0] << " " << score_top1[1] << " " << score_top1[2] << endl;
-            if (mode == 0) {
+                size_t N_size = N * sizeof(char);
+                size_t M_size = M * sizeof(char);
+                size_t size = N * M * sizeof(int);
+                top_hold = top_scores[0];
 
-                int** sc_mat = new int* [N];
-                int** ins_mat = new int* [N];
-                int** del_mat = new int* [N];
-                int** sc_mat_hold = new int* [N];
+                if (mode == 0 && top_hold == top_scores[i]) {
 
-                int** t_sc_mat = new int* [N];
-                int** t_ins_mat = new int* [N];
-                int** t_del_mat = new int* [N];
-                int** t_sc_mat_hold = new int* [N];
+                    int** sc_mat = new int* [N];
+                    int** ins_mat = new int* [N];
+                    int** del_mat = new int* [N];
+                    int** sc_mat_hold = new int* [N];
 
-                for (int i = 0; i < N; i++) {
-                    sc_mat[i] = new int[M]();
-                    ins_mat[i] = new int[M]();
-                    del_mat[i] = new int[M]();
-                    sc_mat_hold[i] = new int[M]();
+                    int** t_sc_mat = new int* [N];
+                    int** t_ins_mat = new int* [N];
+                    int** t_del_mat = new int* [N];
+                    int** t_sc_mat_hold = new int* [N];
 
-                    t_sc_mat[i] = new int[M]();
-                    t_ins_mat[i] = new int[M]();
-                    t_del_mat[i] = new int[M]();
-                    t_sc_mat_hold[i] = new int[M]();
-                }
+                    for (int i = 0; i < N; i++) {
+                        sc_mat[i] = new int[M]();
+                        ins_mat[i] = new int[M]();
+                        del_mat[i] = new int[M]();
+                        sc_mat_hold[i] = new int[M]();
 
-                init_local_v2(DNA_sequence, protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat);
-                auto start = steady_clock::now();
-                scoring_local_v2(DNA_sequence, protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat);
-                auto end = steady_clock::now();
-                auto diff = end - start;
-                traceV2(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, score_top1[3], index);
-
-                for (int i = 0; i < N_size; i++) {
-                    delete[] sc_mat[i];
-                    delete[] ins_mat[i];
-                    delete[] del_mat[i];
-                    delete[] t_sc_mat[i];
-                    delete[] t_ins_mat[i];
-                    delete[] t_del_mat[i];
-                    delete[] sc_mat_hold[i];
-                    delete[] t_sc_mat_hold[i];
-                }
-
-                delete[] sc_mat;
-                delete[] ins_mat;
-                delete[] del_mat;
-                delete[] t_sc_mat;
-                delete[] t_ins_mat;
-                delete[] t_del_mat;
-                delete[] sc_mat_hold;
-                delete[] t_sc_mat_hold;
-
-            }
-            else if (mode == 1) {
-
-                char* d_DNA_sequence;
-                char* d_protein_sequence;
-                char* d_DNA_sequence_r;
-
-                int* u_sc_mat;
-                int* u_ins_mat;
-                int* u_del_mat;
-
-                int* u_t_sc_mat;
-                int* u_t_ins_mat;
-                int* u_t_del_mat;
-
-                checkCudaErrors(cudaMalloc(&d_DNA_sequence, N_size));
-                checkCudaErrors(cudaMalloc(&d_protein_sequence, M_size));
-                checkCudaErrors(cudaMalloc(&d_DNA_sequence_r, N_size));
-
-                checkCudaErrors(cudaMemcpy(d_DNA_sequence, DNA_sequence.c_str(), N_size, cudaMemcpyHostToDevice));
-                checkCudaErrors(cudaMemcpy(d_protein_sequence, protein_sequence.c_str(), M_size, cudaMemcpyHostToDevice));
-                checkCudaErrors(cudaMemcpy(d_DNA_sequence_r, DNA_sequence_r.c_str(), N_size, cudaMemcpyHostToDevice));
-
-                checkCudaErrors(cudaMallocManaged(&u_sc_mat, size));
-                checkCudaErrors(cudaMallocManaged(&u_ins_mat, size));
-                checkCudaErrors(cudaMallocManaged(&u_del_mat, size));
-
-                checkCudaErrors(cudaMallocManaged(&u_t_sc_mat, size));
-                checkCudaErrors(cudaMallocManaged(&u_t_ins_mat, size));
-                checkCudaErrors(cudaMallocManaged(&u_t_del_mat, size));
-
-                checkCudaErrors(cudaMemset(u_sc_mat, 0, size));
-                checkCudaErrors(cudaMemset(u_ins_mat, 0, size));
-                checkCudaErrors(cudaMemset(u_del_mat, 0, size));
-
-                checkCudaErrors(cudaMemset(u_t_sc_mat, 0, size));
-                checkCudaErrors(cudaMemset(u_t_ins_mat, 0, size));
-                checkCudaErrors(cudaMemset(u_t_del_mat, 0, size));
-
-                dim3 blockDimMain(32, 32);
-                dim3 gridDimMain(1);
-                dim3 blockDimLastRow(1024);
-                dim3 gridDimLastRow(((unsigned int)(M - 1) + blockDimLastRow.x - 1) / blockDimLastRow.x);
-
-
-                unsigned int submatrixSide = blockDimMain.x;
-                unsigned int numSubmatrixRows = ((unsigned int)N + submatrixSide - 1) / submatrixSide;
-                unsigned int numSubmatrixCols = ((unsigned int)M + submatrixSide - 1) / submatrixSide;
-
-                init_local_v2_cuda(DNA_sequence, protein_sequence, u_sc_mat, u_ins_mat, u_del_mat, u_t_sc_mat, u_t_ins_mat, u_t_del_mat, N, M);
-
-                timer.Start();
-                for (unsigned int diag = 0; diag < numSubmatrixRows + numSubmatrixCols - 1; ++diag) {
-                    for (unsigned int submatrixY = std::max(0, (int)diag - (int)(numSubmatrixCols - 1)); submatrixY <= diag && submatrixY < numSubmatrixRows; ++submatrixY) {
-                        int submatrixX = diag - submatrixY;
-                        scoring_local_v2_cuda << <gridDimMain, blockDimMain >> > (d_DNA_sequence, d_protein_sequence, u_sc_mat, u_ins_mat, u_del_mat, u_t_sc_mat, u_t_ins_mat, u_t_del_mat, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
-                        checkCudaErrors(cudaGetLastError());
+                        t_sc_mat[i] = new int[M]();
+                        t_ins_mat[i] = new int[M]();
+                        t_del_mat[i] = new int[M]();
+                        t_sc_mat_hold[i] = new int[M]();
                     }
-                    checkCudaErrors(cudaDeviceSynchronize());
+
+                    init_local_v2(DNA_sequence, protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat);
+                    auto start = steady_clock::now();
+                    scoring_local_v2(DNA_sequence, protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat);
+                    auto end = steady_clock::now();
+                    auto diff = end - start;
+                    traceV2(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+
+                    for (int i = 0; i < N_size; i++) {
+                        delete[] sc_mat[i];
+                        delete[] ins_mat[i];
+                        delete[] del_mat[i];
+                        delete[] t_sc_mat[i];
+                        delete[] t_ins_mat[i];
+                        delete[] t_del_mat[i];
+                        delete[] sc_mat_hold[i];
+                        delete[] t_sc_mat_hold[i];
+                    }
+
+                    delete[] sc_mat;
+                    delete[] ins_mat;
+                    delete[] del_mat;
+                    delete[] t_sc_mat;
+                    delete[] t_ins_mat;
+                    delete[] t_del_mat;
+                    delete[] sc_mat_hold;
+                    delete[] t_sc_mat_hold;
+
                 }
-                timer.Stop();
+                else if (mode == 1 && top_hold == top_scores[i]) {
+                    cout << top_scores[i] << " " << top_i[i] << " " << top_j[i] << " " << top_indeces[i] << endl;
+                    char* d_DNA_sequence;
+                    char* d_protein_sequence;
+                    char* d_DNA_sequence_r;
 
-                cout << score_top1[0] << " " << score_top1[1] << " " << score_top1[2] << endl;
-                traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, score_top1[3], index);
-                cout << "Time in ms: " << timer.Elapsed() << endl;
+                    int* u_sc_mat;
+                    int* u_ins_mat;
+                    int* u_del_mat;
 
-                checkCudaErrors(cudaFree(d_DNA_sequence));
-                checkCudaErrors(cudaFree(d_protein_sequence));
-                checkCudaErrors(cudaFree(d_DNA_sequence_r));
+                    int* u_t_sc_mat;
+                    int* u_t_ins_mat;
+                    int* u_t_del_mat;
 
-                checkCudaErrors(cudaFree(u_sc_mat));
-                checkCudaErrors(cudaFree(u_ins_mat));
-                checkCudaErrors(cudaFree(u_del_mat));
+                    checkCudaErrors(cudaMalloc(&d_DNA_sequence, N_size));
+                    checkCudaErrors(cudaMalloc(&d_protein_sequence, M_size));
+                    checkCudaErrors(cudaMalloc(&d_DNA_sequence_r, N_size));
 
-                checkCudaErrors(cudaFree(u_t_sc_mat));
-                checkCudaErrors(cudaFree(u_t_ins_mat));
-                checkCudaErrors(cudaFree(u_t_del_mat));
-                
+                    checkCudaErrors(cudaMemcpy(d_DNA_sequence, DNA_sequence.c_str(), N_size, cudaMemcpyHostToDevice));
+                    checkCudaErrors(cudaMemcpy(d_protein_sequence, protein_sequence.c_str(), M_size, cudaMemcpyHostToDevice));
+                    checkCudaErrors(cudaMemcpy(d_DNA_sequence_r, DNA_sequence_r.c_str(), N_size, cudaMemcpyHostToDevice));
+
+                    checkCudaErrors(cudaMallocManaged(&u_sc_mat, size));
+                    checkCudaErrors(cudaMallocManaged(&u_ins_mat, size));
+                    checkCudaErrors(cudaMallocManaged(&u_del_mat, size));
+
+                    checkCudaErrors(cudaMallocManaged(&u_t_sc_mat, size));
+                    checkCudaErrors(cudaMallocManaged(&u_t_ins_mat, size));
+                    checkCudaErrors(cudaMallocManaged(&u_t_del_mat, size));
+
+                    checkCudaErrors(cudaMemset(u_sc_mat, 0, size));
+                    checkCudaErrors(cudaMemset(u_ins_mat, 0, size));
+                    checkCudaErrors(cudaMemset(u_del_mat, 0, size));
+
+                    checkCudaErrors(cudaMemset(u_t_sc_mat, 0, size));
+                    checkCudaErrors(cudaMemset(u_t_ins_mat, 0, size));
+                    checkCudaErrors(cudaMemset(u_t_del_mat, 0, size));
+
+                    dim3 blockDimMain(32, 32);
+                    dim3 gridDimMain(1);
+                    dim3 blockDimLastRow(1024);
+                    dim3 gridDimLastRow(((unsigned int)(M - 1) + blockDimLastRow.x - 1) / blockDimLastRow.x);
+
+
+                    unsigned int submatrixSide = blockDimMain.x;
+                    unsigned int numSubmatrixRows = ((unsigned int)N + submatrixSide - 1) / submatrixSide;
+                    unsigned int numSubmatrixCols = ((unsigned int)M + submatrixSide - 1) / submatrixSide;
+
+                    init_local_v2_cuda(DNA_sequence, protein_sequence, u_sc_mat, u_ins_mat, u_del_mat, u_t_sc_mat, u_t_ins_mat, u_t_del_mat, N, M);
+
+                    timer.Start();
+                    for (unsigned int diag = 0; diag < numSubmatrixRows + numSubmatrixCols - 1; ++diag) {
+                        for (unsigned int submatrixY = std::max(0, (int)diag - (int)(numSubmatrixCols - 1)); submatrixY <= diag && submatrixY < numSubmatrixRows; ++submatrixY) {
+                            int submatrixX = diag - submatrixY;
+                            scoring_local_v2_cuda << <gridDimMain, blockDimMain >> > (d_DNA_sequence, d_protein_sequence, u_sc_mat, u_ins_mat, u_del_mat, u_t_sc_mat, u_t_ins_mat, u_t_del_mat, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
+                            checkCudaErrors(cudaGetLastError());
+                        }
+                        checkCudaErrors(cudaDeviceSynchronize());
+                    }
+                    timer.Stop();
+
+                    traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, top_indeces[i], index);
+                    cout << "Time in ms: " << timer.Elapsed() << endl;
+
+                    checkCudaErrors(cudaFree(d_DNA_sequence));
+                    checkCudaErrors(cudaFree(d_protein_sequence));
+                    checkCudaErrors(cudaFree(d_DNA_sequence_r));
+
+                    checkCudaErrors(cudaFree(u_sc_mat));
+                    checkCudaErrors(cudaFree(u_ins_mat));
+                    checkCudaErrors(cudaFree(u_del_mat));
+
+                    checkCudaErrors(cudaFree(u_t_sc_mat));
+                    checkCudaErrors(cudaFree(u_t_ins_mat));
+                    checkCudaErrors(cudaFree(u_t_del_mat));
+
+                }
             }
         }
         else if (top == 1) {
