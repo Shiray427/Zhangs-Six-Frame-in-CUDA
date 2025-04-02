@@ -916,7 +916,7 @@ void traceV2(string input_seq, string ref_seq, int** sc_mat, int** t_sc_mat, siz
 void traceV2_check(string input_seq, string ref_seq, int** sc_mat, int** t_sc_mat, size_t N, size_t M, int index, int* indeces) {
     N = (int)N;
     M = (int)M;
-    int i_max = 0, j_max = 0, i = 0, j = 0, max_score = 0, curr_score;
+    int i_max = 0, j_max = 0, max_score = 0, curr_score;
     string f1, f2, f3, seq_dna, seq_prot, frameshift;
     three_frame(input_seq, &f1, &f2, &f3);
 
@@ -930,8 +930,6 @@ void traceV2_check(string input_seq, string ref_seq, int** sc_mat, int** t_sc_ma
             }
         }
     }
-    i = i_max;
-    j = j_max;
 
     indeces[0] = max_score;
     indeces[1] = i_max;
@@ -945,7 +943,6 @@ void traceV2_check(string input_seq, string ref_seq, int** sc_mat, int** t_sc_ma
 void traceV2_1d(string input_seq, string ref_seq, int* sc_mat, int* t_sc_mat, int N, int M, int index, int* indeces) {
     int i_max = 0, j_max = 0, i = 0, j = 0, max_score = 0, curr_score;
     string f1, f2, f3, seq_dna, seq_prot, frameshift;
-    indeces[3];
     three_frame(input_seq, &f1, &f2, &f3);
 
     for (int i = 0; i < N; i++) {
@@ -967,9 +964,6 @@ void traceV2_1d(string input_seq, string ref_seq, int* sc_mat, int* t_sc_mat, in
     indeces[2] = j_max;
 
     while (sc_mat[i * M + j] != 0) {
-
-        int score_tc;
-        score_tc = t_sc_mat[i * M + j];
         myArray[index][1] = to_string(j);
         routine(t_sc_mat[i * M + j], i, j, input_seq, ref_seq, seq_dna, seq_prot, frameshift);
     }
@@ -1016,7 +1010,7 @@ void traceV2_1d(string input_seq, string ref_seq, int* sc_mat, int* t_sc_mat, in
 void traceV2_1d_check(string input_seq, string ref_seq, int* sc_mat, int* t_sc_mat, size_t N, size_t M, int index, int* indeces) {
     N = (int)N;
     M = (int)M;
-    int i_max = 0, j_max = 0, i = 0, j = 0, max_score = 0, curr_score;
+    int i_max = 0, j_max = 0, max_score = 0, curr_score;
     string f1, f2, f3, seq_dna, seq_prot, frameshift;
     three_frame(input_seq, &f1, &f2, &f3);
 
@@ -1030,8 +1024,6 @@ void traceV2_1d_check(string input_seq, string ref_seq, int* sc_mat, int* t_sc_m
             }
         }
     }
-    i = i_max;
-    j = j_max;
 
     indeces[0] = max_score;
     indeces[1] = i_max;
@@ -1331,16 +1323,16 @@ int main()
                     int** t_del_mat = new int* [N];
                     int** t_sc_mat_hold = new int* [N];
 
-                    for (int i = 0; i < N; i++) {
-                        sc_mat[i] = new int[M]();
-                        ins_mat[i] = new int[M]();
-                        del_mat[i] = new int[M]();
-                        sc_mat_hold[i] = new int[M]();
+                    for (int j = 0; j < N; j++) {
+                        sc_mat[j] = new int[M]();
+                        ins_mat[j] = new int[M]();
+                        del_mat[j] = new int[M]();
+                        sc_mat_hold[j] = new int[M]();
 
-                        t_sc_mat[i] = new int[M]();
-                        t_ins_mat[i] = new int[M]();
-                        t_del_mat[i] = new int[M]();
-                        t_sc_mat_hold[i] = new int[M]();
+                        t_sc_mat[j] = new int[M]();
+                        t_ins_mat[j] = new int[M]();
+                        t_del_mat[j] = new int[M]();
+                        t_sc_mat_hold[j] = new int[M]();
                     }
 
                     init_local_v2(DNA_sequence, protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat);
@@ -1353,15 +1345,15 @@ int main()
                     cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
                     cout << "Time in ms: " << duration<double, milli>(diff).count() << endl << endl;
 
-                    for (int i = 0; i < N_size; i++) {
-                        delete[] sc_mat[i];
-                        delete[] ins_mat[i];
-                        delete[] del_mat[i];
-                        delete[] t_sc_mat[i];
-                        delete[] t_ins_mat[i];
-                        delete[] t_del_mat[i];
-                        delete[] sc_mat_hold[i];
-                        delete[] t_sc_mat_hold[i];
+                    for (int j = 0; j < N_size; j++) {
+                        delete[] sc_mat[j];
+                        delete[] ins_mat[j];
+                        delete[] del_mat[j];
+                        delete[] t_sc_mat[j];
+                        delete[] t_ins_mat[j];
+                        delete[] t_del_mat[j];
+                        delete[] sc_mat_hold[j];
+                        delete[] t_sc_mat_hold[j];
                     }
 
                     delete[] sc_mat;
@@ -1480,16 +1472,16 @@ int main()
                     int** t_del_mat = new int* [N];
                     int** t_sc_mat_hold = new int* [N];
 
-                    for (int i = 0; i < N; i++) {
-                        sc_mat[i] = new int[M]();
-                        ins_mat[i] = new int[M]();
-                        del_mat[i] = new int[M]();
-                        sc_mat_hold[i] = new int[M]();
+                    for (int j = 0; j < N; j++) {
+                        sc_mat[j] = new int[M]();
+                        ins_mat[j] = new int[M]();
+                        del_mat[j] = new int[M]();
+                        sc_mat_hold[j] = new int[M]();
 
-                        t_sc_mat[i] = new int[M]();
-                        t_ins_mat[i] = new int[M]();
-                        t_del_mat[i] = new int[M]();
-                        t_sc_mat_hold[i] = new int[M]();
+                        t_sc_mat[j] = new int[M]();
+                        t_ins_mat[j] = new int[M]();
+                        t_del_mat[j] = new int[M]();
+                        t_sc_mat_hold[j] = new int[M]();
                     }
 
                     init_local_v2(DNA_sequence, protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat);
@@ -1502,15 +1494,15 @@ int main()
                     cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
                     cout << "Time in ms: " << duration<double, milli>(diff).count() << endl << endl;
 
-                    for (int i = 0; i < N_size; i++) {
-                        delete[] sc_mat[i];
-                        delete[] ins_mat[i];
-                        delete[] del_mat[i];
-                        delete[] t_sc_mat[i];
-                        delete[] t_ins_mat[i];
-                        delete[] t_del_mat[i];
-                        delete[] sc_mat_hold[i];
-                        delete[] t_sc_mat_hold[i];
+                    for (int j = 0; j < N_size; j++) {
+                        delete[] sc_mat[j];
+                        delete[] ins_mat[j];
+                        delete[] del_mat[j];
+                        delete[] t_sc_mat[j];
+                        delete[] t_ins_mat[j];
+                        delete[] t_del_mat[j];
+                        delete[] sc_mat_hold[j];
+                        delete[] t_sc_mat_hold[j];
                     }
 
                     delete[] sc_mat;
