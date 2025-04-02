@@ -1081,7 +1081,7 @@ int main()
 
     } while (true);
 
-    for (int index_dna = 4; index_dna < 5; index_dna++) {
+    for (int index_dna = 0; index_dna < dnaInputs.size(); index_dna++) {
 
         int* score_top1 = new int [5] {};
         int* top_scores = new int[5] {};
