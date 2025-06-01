@@ -45,7 +45,7 @@ string myArray[40000][5];
 
 int blosum62mat[24][24];
 int t_blosum62mat[24][24];
-__device__ __constant__ int d_blosum62mat[24][24];
+__constant__ int d_blosum62mat[24][24];
 
 __constant__ int c_gep = 2; // opening penalty
 __constant__ int c_gop = 3; // extend penalty
@@ -70,6 +70,7 @@ void check(T err, const char* const func, const char* const file, const int line
         exit(1);
     }
 }
+
 
 char DNA_to_Protein(string a) {
     unordered_map<string, char> DP{
@@ -102,9 +103,6 @@ char DNA_to_Protein(string a) {
 }
 
 __device__ char d_DNA_to_Protein(char dna_index_1,char dna_index_2, char dna_index_3) {
-    // Directly get the characters using the provided indices
-    // No need for a temporary 'codon' char array or std::string
-    // Calculate the codoncode using the ASCII values of the characters
     int codoncode = (int)dna_index_1 * 10000 + (int)dna_index_2 * 100 + (int)dna_index_3;
 
     switch (codoncode) {
@@ -301,7 +299,7 @@ int place(char a) {
     return blosumVal[(unsigned char)a];
 }
 
-__constant__ int g_protein_to_int_map[128]; 
+__constant__ int g_protein_to_int_map[128];
 
 void initialize_protein_to_int_map() {
 
@@ -330,7 +328,7 @@ void initialize_protein_to_int_map() {
     host_map['B'] = 20;
     host_map['Z'] = 21;
     host_map['X'] = 22;
-    host_map['*'] = 23; // ASCII value for '*' is 42
+    host_map['*'] = 23;
 
     cudaError_t err = cudaMemcpyToSymbol(g_protein_to_int_map, host_map.data(), sizeof(int) * host_map.size(), 0, cudaMemcpyHostToDevice);
     if (err != cudaSuccess) {
@@ -810,163 +808,7 @@ __global__ void scoring_local_v2_cuda(const char* __restrict__ input_seq, const 
         }
     }
 }
-/*
-// Forward declaration for the child kernel (if needed, though often defined first)
-__global__ void scoring_local_v2_wave_cuda(
-    const char* input_seq,
-    const char* ref_seq,
-    int* u_sc_mat,
-    int* u_ins_mat,
-    int* u_del_mat,
-    int* u_t_sc_mat,
-    int* u_t_ins_mat,
-    int* u_t_del_mat,
-    unsigned int N,
-    unsigned int M,
-    unsigned int current_diag_sum, // Represents (i + j)
-    const int gep, const int gop, const int shift); // Pass constants to kernel
 
-// --- Child Kernel: Computes a single anti-diagonal wave ---
-__global__ void scoring_local_v2_wave_cuda(
-    const char* input_seq,
-    const char* ref_seq,
-    int* u_sc_mat,
-    int* u_ins_mat,
-    int* u_del_mat,
-    int* u_t_sc_mat,
-    int* u_t_ins_mat,
-    int* u_t_del_mat,
-    unsigned int N,
-    unsigned int M,
-    unsigned int current_diag_sum,
-    const int gep_val, const int gop_val, const int shift_val) // Renamed params to avoid conflicts with macros
-{
-    // Calculate the starting 'i' for this diagonal
-    int i_start_for_diag = (current_diag_sum >= M) ? ((int)current_diag_sum - (int)M + 1) : 0;
-    // Calculate the length of the current diagonal
-    int diag_length = min((int)current_diag_sum, (int)N - 1) - i_start_for_diag + 1;
-    if (current_diag_sum >= N) diag_length = min(diag_length, (int)M - ((int)current_diag_sum - ((int)N - 1)));
-
-    // Ensure global_idx maps to a valid cell on the current diagonal
-    int global_idx_on_diag = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (global_idx_on_diag >= diag_length) {
-        return; // Thread is outside the current diagonal's work
-    }
-
-    int i = i_start_for_diag + global_idx_on_diag;
-    int j = current_diag_sum - i;
-
-    // Local variables
-    int insert = 0;
-    int del = 0;
-    int xscore = 0;
-    int sc_1 = 0, sc_2 = 0, sc_3 = 0;
-    int scoring = 0;
-    char prot_seq;
-
-    // Original kernel's conditions: i >= 4 && i < N && j >= 1 && j < M
-    if (i >= 4 && i < N && j >= 1 && j < M) {
-
-        prot_seq = d_DNA_to_Protein(input_seq, i - 1, i, i + 1);
-        scoring = d_score(prot_seq, ref_seq[j - 1]);
-
-        insert = u_ins_mat[i * M + (j - 1)] - gep_val;
-        xscore = u_sc_mat[i * M + (j - 1)] - gop_val - gep_val;
-
-        u_ins_mat[i * M + j] = (insert > xscore) ? insert : xscore;
-        u_t_ins_mat[i * M + j] = (insert > xscore) ? 0 : 1;
-
-        del = u_del_mat[(i - 3) * M + j] - gep_val;
-        xscore = u_sc_mat[(i - 3) * M + j] - gop_val - gep_val;
-
-        u_del_mat[i * M + j] = (del >= xscore) ? del : xscore;
-        u_t_del_mat[i * M + j] = (del >= xscore) ? 0 : 1;
-
-        if (i < N - 1) {
-            insert = u_ins_mat[i * M + j];
-            del = u_del_mat[i * M + j];
-
-            sc_1 = u_sc_mat[(i - 2) * M + (j - 1)] + scoring - shift_val;
-            sc_2 = u_sc_mat[(i - 3) * M + (j - 1)] + scoring;
-            sc_3 = u_sc_mat[(i - 4) * M + (j - 1)] + scoring - shift_val;
-
-            if (insert >= del && insert >= sc_1 && insert >= sc_2 && insert >= sc_3) {
-                u_sc_mat[i * M + j] = insert;
-                u_t_sc_mat[i * M + j] = -2;
-            }
-            else if (del >= insert && del >= sc_1 && del >= sc_2 && del >= sc_3) {
-                u_sc_mat[i * M + j] = del;
-                u_t_sc_mat[i * M + j] = -1;
-            }
-            else if (sc_1 >= insert && sc_1 >= del && sc_1 >= sc_2 && sc_1 >= sc_3) {
-                u_sc_mat[i * M + j] = sc_1;
-                u_t_sc_mat[i * M + j] = 2;
-            }
-            else if (sc_2 >= insert && sc_2 >= del && sc_2 >= sc_1 && sc_2 >= sc_3) {
-                u_sc_mat[i * M + j] = sc_2;
-                u_t_sc_mat[i * M + j] = 3;
-            }
-            else if (sc_3 >= insert && sc_3 >= del && sc_3 >= sc_1 && sc_3 >= sc_2) {
-                u_sc_mat[i * M + j] = sc_3;
-                u_t_sc_mat[i * M + j] = 4;
-            }
-        }
-
-        xscore = u_sc_mat[i * M + j];
-
-        if (xscore < 0) {
-            u_sc_mat[i * M + j] = 0;
-        }
-    }
-}/*
-    __global__ void scoring_local_v2_launcher_kernel(
-        const char* d_DNA_sequence,
-        const char* d_protein_sequence,
-        int* u_sc_mat,
-        int* u_ins_mat,
-        int* u_del_mat,
-        int* u_t_sc_mat,
-        int* u_t_ins_mat,
-        int* u_t_del_mat,
-        unsigned int N,
-        unsigned int M,
-        const int gep_val, const int gop_val, const int shift_val) // Pass constants
-    {
-        // Ensure only one thread executes this launching logic
-        if (threadIdx.x == 0 && threadIdx.y == 0 && blockIdx.x == 0 && blockIdx.y == 0) {
-
-            unsigned int total_diagonals = (N + M - 1);
-            unsigned int child_block_size = 256; // Tune this value for optimal performance
-
-            // Iterate through anti-diagonals and launch child kernels
-            for (unsigned int current_diag_sum = 0; current_diag_sum < total_diagonals; ++current_diag_sum) {
-                // Calculate the number of cells on the current anti-diagonal
-                int i_start_for_diag = (current_diag_sum >= M) ? ((int)current_diag_sum - (int)M + 1) : 0;
-                int i_end_for_diag = min((int)current_diag_sum, (int)N - 1); // Cast to int
-                unsigned int diag_length = (i_end_for_diag - i_start_for_diag + 1);
-
-                if (diag_length == 0) continue; // Skip empty diagonals
-
-                unsigned int child_grid_size = (diag_length + child_block_size - 1) / child_block_size;
-
-                scoring_local_v2_wave_cuda <<< child_grid_size, child_block_size >>> (
-                    d_DNA_sequence, d_protein_sequence,
-                    u_sc_mat, u_ins_mat, u_del_mat,
-                    u_t_sc_mat, u_t_ins_mat, u_t_del_mat,
-                    N, M,
-                    current_diag_sum,
-                    gep_val, gop_val, shift_val);
-
-                // Synchronize on the device after each child kernel launch
-                // This is crucial to ensure data written by previous diagonal is visible
-                // to the next diagonal.
-                cudaDeviceSynchronize();
-                // In a real application, you might add error checking here: cudaGetLastError();
-            }
-        }
-    }
-*/
 void top5(int score, int index, int top_i, int top_j, int* score_top, int* top_i_max, int* top_j_max, int* top_indices) {
     // Check if the new score belongs in the top 5
     for (int x = 0; x < 5; x++) {
@@ -1262,7 +1104,7 @@ void traceV2_1d_check(string input_seq, string ref_seq, int* sc_mat, int* t_sc_m
 }
 
 void write_to_excel(int n, int i) {
-    string filename = "outputRERunS" + std::to_string(n) + ".csv";
+    string filename = "outputRERun" + std::to_string(n) + ".csv";
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
         std::cerr << "Failed to open file for writing." << std::endl;
@@ -1271,7 +1113,7 @@ void write_to_excel(int n, int i) {
     file << i << "," << myArray[i][4] << "," << myArray[i][0] << "," << myArray[i][1] << "," << myArray[i][2] << "," << myArray[i][3] << "\n";
 
     file.close();
-    cout << "Data " << i << " successfully written to output.csv" << endl;
+    //cout << "Data " << i << " successfully written to output.csv" << endl;
 }
 
 
@@ -1290,7 +1132,7 @@ int main()
 
     readBlosum62();
 
-    cudaMemcpyToSymbol(d_blosum62mat, blosum62mat, sizeof(blosum62mat));
+    cudaMemcpyToSymbol(d_blosum62mat, blosum62mat, sizeof(blosum62mat), 0, cudaMemcpyHostToDevice);
     memcpy(t_blosum62mat, blosum62mat, sizeof(blosum62mat));
 
     initialize_protein_to_int_map();
@@ -1350,7 +1192,7 @@ int main()
     } while (true);
 
     float total_r = 0;
-    for (int index_dna = 0; index_dna < 5; index_dna++) {
+    for (int index_dna = 0; index_dna < 8; index_dna++) {
 
         int* score_top1 = new int [5] {};
         int* top_scores = new int[5] {};
@@ -1373,36 +1215,13 @@ int main()
 			size_t N = DNA_sequence.length();
 			size_t M = protein_sequence.length() + 1;
 
-            size_t N_size = N * sizeof(char);
-            size_t M_size = M * sizeof(char);
-			size_t size = N * M * sizeof(int);
+            size_t N_size = (N) * sizeof(char);
+            size_t M_size = (M) * sizeof(char);
+			size_t size = (N) * (M) * sizeof(int);
             myArray[index_prot][4] = to_string(protein_sequence.length());
             
 
             if (mode == 0) {
-                /*
-                int** sc_mat = new int* [N];
-                int** ins_mat = new int* [N];
-                int** del_mat = new int* [N];
-                int** sc_mat_hold = new int* [N];
-
-                int** t_sc_mat = new int* [N];
-                int** t_ins_mat = new int* [N];
-                int** t_del_mat = new int* [N];
-                int** t_sc_mat_hold = new int* [N];
-
-                for (int i = 0; i < N; i++) {
-                    sc_mat[i] = new int[M]();
-                    ins_mat[i] = new int[M]();
-                    del_mat[i] = new int[M]();
-                    sc_mat_hold[i] = new int[M]();
-
-                    t_sc_mat[i] = new int[M]();
-                    t_ins_mat[i] = new int[M]();
-                    t_del_mat[i] = new int[M]();
-                    t_sc_mat_hold[i] = new int[M]();
-                }
-                */
 
                 int* sc_mat = (int*)malloc(sizeof(int) * N * M);
                 int* ins_mat = (int*)malloc(sizeof(int) * N * M);
@@ -1413,6 +1232,16 @@ int main()
                 int* t_ins_mat = (int*)malloc(sizeof(int) * N * M);
                 int* t_del_mat = (int*)malloc(sizeof(int) * N * M);
                 int* t_sc_mat_hold = (int*)malloc(sizeof(int) * N * M);
+
+                int* sc_mat_r = (int*)malloc(sizeof(int) * N * M);
+                int* ins_mat_r = (int*)malloc(sizeof(int) * N * M);
+                int* del_mat_r = (int*)malloc(sizeof(int) * N * M);
+                int* sc_mat_hold_r = (int*)malloc(sizeof(int) * N * M);
+
+                int* t_sc_mat_r = (int*)malloc(sizeof(int) * N * M);
+                int* t_ins_mat_r = (int*)malloc(sizeof(int) * N * M);
+                int* t_del_mat_r = (int*)malloc(sizeof(int) * N * M);
+                int* t_sc_mat_hold_r = (int*)malloc(sizeof(int) * N * M);
 
                 char* d_DNA_sequence = new char[N_size];  // allocate manually
                 memcpy(d_DNA_sequence, DNA_sequence.c_str(), N_size);
@@ -1425,55 +1254,35 @@ int main()
 
 				init_local_v2(DNA_sequence, protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat);
 
-                //auto start = steady_clock::now();
                 QueryPerformanceCounter(&start);
 				scoring_local_v2(d_DNA_sequence, d_protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat, N, M);
                 QueryPerformanceCounter(&end);
                 double elapsed = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
-                //auto end = steady_clock::now();
-                //auto diff = end - start;
 
                 traceV2_1d_check(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
                 //top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
                 myArray[index_prot][3] = to_string(elapsed);
                 //write_to_excel(index_dna, index_prot);
+                total_r += elapsed;
                 cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed << endl;
                     
 				if (frame == 6) {
-					init_local_v2(DNA_sequence_r, protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat);
+					init_local_v2(DNA_sequence_r, protein_sequence, sc_mat_r, ins_mat_r, del_mat_r, t_sc_mat_r, t_ins_mat_r, t_del_mat_r);
 
-                    auto start = steady_clock::now();
-					scoring_local_v2(d_DNA_sequence_r, d_protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat, N, M);
-                    auto end = steady_clock::now();
-                    auto diff = end - start;
+                    QueryPerformanceCounter(&start);
+					scoring_local_v2(d_DNA_sequence_r, d_protein_sequence, sc_mat_r, ins_mat_r, del_mat_r, t_sc_mat_r, t_ins_mat_r, t_del_mat_r, N, M);
+                    QueryPerformanceCounter(&end);
+                    double elapsed = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
-                    traceV2_1d_check(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
+                    traceV2_1d_check(DNA_sequence, protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
                     //top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
-                    myArray[index_prot][3] = to_string(duration<double, milli>(diff).count());
+                    myArray[index_prot][3] = to_string(elapsed);
                     //write_to_excel(index_dna, index_prot);
-                    cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << duration<double, milli>(diff).count() << endl;
+                    cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed << endl;
+                    total_r += elapsed;
+                    cout << "Total runtime: " << total_r << endl;
 				}
-                /*
-                for (int i = 0; i < N_size; i++) {
-                    delete[] sc_mat[i];
-                    delete[] ins_mat[i];
-                    delete[] del_mat[i];
-                    delete[] t_sc_mat[i];
-                    delete[] t_ins_mat[i];
-                    delete[] t_del_mat[i];
-                    delete[] sc_mat_hold[i];
-                    delete[] t_sc_mat_hold[i];
-                }
-
-                delete[] sc_mat;
-                delete[] ins_mat;
-                delete[] del_mat;
-                delete[] t_sc_mat;
-                delete[] t_ins_mat;
-                delete[] t_del_mat;
-                delete[] sc_mat_hold;
-                delete[] t_sc_mat_hold;
-                */
+             
                 free(sc_mat);
                 free(ins_mat);
                 free(del_mat);
@@ -1483,6 +1292,17 @@ int main()
                 free(t_ins_mat);
                 free(t_del_mat);
                 free(t_sc_mat_hold);
+
+                free(sc_mat_r);
+                free(ins_mat_r);
+                free(del_mat_r);
+                free(sc_mat_hold_r);
+
+                free(t_sc_mat_r);
+                free(t_ins_mat_r);
+                free(t_del_mat_r);
+                free(t_sc_mat_hold_r);
+
                 free(d_protein_sequence);
                 free(d_DNA_sequence);
             }
@@ -1532,16 +1352,6 @@ int main()
                 checkCudaErrors(cudaMallocManaged(&u_t_ins_mat_r, size));
                 checkCudaErrors(cudaMallocManaged(&u_t_del_mat_r, size));
 
-                
-                /*
-                checkCudaErrors(cudaMemPrefetchAsync(u_sc_mat, size, device, stream));
-                checkCudaErrors(cudaMemPrefetchAsync(u_ins_mat, size, device, stream));
-                checkCudaErrors(cudaMemPrefetchAsync(u_del_mat, size, device, stream));
-                checkCudaErrors(cudaMemPrefetchAsync(u_t_sc_mat, size, device, stream));
-                checkCudaErrors(cudaMemPrefetchAsync(u_t_ins_mat, size, device, stream));
-                checkCudaErrors(cudaMemPrefetchAsync(u_t_del_mat, size, device, stream));
-                checkCudaErrors(cudaStreamSynchronize(stream));
-                */
                 checkCudaErrors(cudaMemset(u_sc_mat, 0, size));
                 checkCudaErrors(cudaMemset(u_ins_mat, 0, size));
                 checkCudaErrors(cudaMemset(u_del_mat, 0, size));
@@ -1559,9 +1369,9 @@ int main()
                 checkCudaErrors(cudaMemset(u_t_del_mat_r, 0, size));
                 
                 dim3 blockDimMain(32, 32);
-                dim3 gridDimMain((N + blockDimMain.x - 1) / blockDimMain.x, (M + blockDimMain.y - 1) / blockDimMain.y);
+                dim3 gridDimMain((N + blockDimMain.x * blockDimMain.y * blockDimMain.x) / (blockDimMain.x * blockDimMain.y * blockDimMain.x), (M + blockDimMain.x * blockDimMain.y * blockDimMain.x) / (blockDimMain.x * blockDimMain.y * blockDimMain.x));
                 
-				unsigned int submatrixSide = blockDimMain.x;
+				unsigned int submatrixSide = blockDimMain.y;
 				unsigned int numSubmatrixRows = ((unsigned int)N + submatrixSide - 1) / submatrixSide;
 				unsigned int numSubmatrixCols = ((unsigned int)M + submatrixSide - 1) / submatrixSide;
 
@@ -1590,7 +1400,7 @@ int main()
 
                 cudaStreamDestroy(stream1);
                 cudaStreamDestroy(stream2);
-
+                
                 traceV2_1d_check(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
                 //cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
                 //traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
@@ -1598,11 +1408,11 @@ int main()
                 //write_to_excel(index_dna, index_prot);
                 cout << endl << "Score: " << index[0] << endl;
                 //top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
-
+                
                 
                 traceV2_1d_check(DNA_sequence_r, protein_sequence, u_sc_mat_r, u_t_sc_mat_r, N, M, index_prot, index_r);
                 cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
-                //traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
+                //traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat_r, u_t_sc_mat_r, N, M, index_prot, index_r);
                 cout << endl << "Score: " << index_r[0] << endl;
                 //write_to_excel(index_dna, index_prot);
                 total_r += timer.Elapsed();
