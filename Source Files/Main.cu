@@ -566,113 +566,10 @@ void init_local_v2(string input_seq, string ref_seq, int* sc_mat, int* ins_mat, 
     }
 }
 
-void init_local_v2_cuda(string input_seq, string ref_seq, int* u_sc_mat, int* u_ins_mat, int* u_del_mat, int* u_t_sc_mat, int* u_t_ins_mat, int* u_t_del_mat, size_t N, size_t M) {
-    for (size_t i = 0; i < N; i++) {
-        u_ins_mat[i * M] = infn;
-        u_t_ins_mat[i * M] = infn;
-    }
-
-    for (size_t i = 0; i < N; i++) {
-        for (size_t j = 0; j < M; j++) {
-            if (i == 0 || j == 0) {
-                u_sc_mat[i * M + j] = 0;
-            }
-        }
-    }
-
-    for (size_t j = 0; j < M; j++) {
-        u_del_mat[0 * M + j] = infn;
-        u_del_mat[2 * M + j] = infn;
-        u_del_mat[3 * M + j] = infn;
-        u_del_mat[1 * M + j] = u_sc_mat[0 * M + j] - gop - gep;
-
-        u_t_del_mat[0 * M + j] = infn;
-        u_t_del_mat[2 * M + j] = infn;
-        u_t_del_mat[3 * M + j] = infn;
-        u_t_del_mat[1 * M + j] = 1;
-    }
-
-    for (int i = 0; i < 4; i++) {
-        for (int j = 1; j < M; j++) {
-            insert = u_ins_mat[i * M + (j - 1)] - gep;
-            xscore = u_sc_mat[i * M + (j - 1)] - gop - gep;
-
-            if (insert > xscore) {
-                u_ins_mat[i * M + j] = insert;
-            }
-            else {
-                u_ins_mat[i * M + j] = xscore;
-            }
-
-            insert = u_ins_mat[i * M + j];
-            del = u_del_mat[i * M + j];
-
-            if (i == 1) {
-                xscore = u_sc_mat[0 * M + (j - 1)] + score(DNA_to_Protein(input_seq.substr(i - 1, end)), ref_seq[j - 1]);
-                if (insert >= del && insert >= xscore) {
-                    u_sc_mat[i * M + j] = insert;
-                }
-                else if (del >= insert && del >= xscore) {
-                    u_sc_mat[i * M + j] = del;
-                }
-                else {
-                    u_sc_mat[i * M + j] = xscore;
-                }
-
-                if (u_sc_mat[i * M + j] == u_ins_mat[i * M + j]) {
-                    u_t_sc_mat[i * M + j] = -2;
-                }
-                else if (u_sc_mat[i * M + j] == u_del_mat[i * M + j]) {
-                    u_t_sc_mat[i * M + j] = -1;
-                }
-                else if (u_sc_mat[i * M + j] == xscore) {
-                    u_t_sc_mat[i * M + j] = 1;
-                }
-            }
-            else if (i == 2) {
-                xscore = u_sc_mat[0 * M + (j - 1)] + score(DNA_to_Protein(input_seq.substr(i - 1, end)), ref_seq[j - 1]) - shift;
-                if (insert >= xscore) {
-                    u_sc_mat[i * M + j] = insert;
-                }
-                else {
-                    u_sc_mat[i * M + j] = xscore;
-                }
-
-                if (u_sc_mat[i * M + j] == u_ins_mat[i * M + j]) {
-                    u_t_sc_mat[i * M + j] = -2;
-                }
-                else if (u_sc_mat[i * M + j] == xscore) {
-                    u_t_sc_mat[i * M + j] = 2;
-                }
-            }
-            else if (i == 3) {
-                xscore = u_sc_mat[1 * M + (j - 1)] + score(DNA_to_Protein(input_seq.substr(i - 1, end)), ref_seq[j - 1]) - shift;
-                if (insert >= xscore) {
-                    u_sc_mat[i * M + j] = insert;
-                }
-                else {
-                    u_sc_mat[i * M + j] = xscore;
-                }
-
-                if (u_sc_mat[i * M + j] == u_ins_mat[i * M + j]) {
-                    u_t_sc_mat[i * M + j] = -2;
-                }
-                else if (u_sc_mat[i * M + j] == xscore) {
-                    u_t_sc_mat[i * M + j] = 2;
-                }
-            }
-
-            if (u_sc_mat[i * M + j] < 0) {
-                u_sc_mat[i * M + j] = 0;
-            }
-        }
-    }
-}
-
 void scoring_local_v2(const char* input_seq, const char* ref_seq, int* sc_mat, int* ins_mat, int* del_mat, int* t_sc_mat, int* t_ins_mat, int* t_del_mat, size_t N, size_t M) {
 
-    for (size_t i = 4; i < N; i++) {
-        for (size_t j = 1; j < M; j++) {
+    for (int i = 4; i < N; i++) {
+        for (int j = 1; j < M; j++) {
             prot_seq = t_DNA_to_Protein(input_seq, i - 1, i, i + 1);
             scoring = t_score(prot_seq, ref_seq[j - 1]);
             insert = ins_mat[i * M + (j - 1)] - gep;
@@ -880,32 +777,6 @@ void routine(int trace, int& i, int& j, string str, string ref_seq, string& fina
         final_seq2 += ref_seq[j];
         frameshift += " ";
     }
-}
-
-//To be Replaced
-void check_index(string input_dna, string ref_prot, string seq_dna, string seq_prot) {
-    int i, high = -1, low = -1, hold = 0, temp = -1, curr = 0;
-    for (i = 0; i < ref_prot.length(); i++) {
-        if (ref_prot[i] == seq_prot[curr]) {
-            if (curr == 0) {
-                temp = i;
-            }
-            curr++;
-
-            if (curr > hold) {
-                hold = curr;
-                low = temp;
-                high = i;
-            }
-        }
-        else {
-            curr = 0;
-            temp = -1;
-        }
-
-    }
-    if (low != -1 && high != -1)
-        cout << "Protein sequence indexes: " << low << " to " << high << endl;
 }
 
 void traceV2(string input_seq, string ref_seq, int** sc_mat, int** t_sc_mat, size_t N, size_t M, int index, int* indeces) {
@@ -1191,7 +1062,8 @@ int main()
 
     } while (true);
 
-    float total_r = 0;
+    double total_r = 0.0;
+
     for (int index_dna = 0; index_dna < 3; index_dna++) {
 
         int* score_top1 = new int [5] {};
@@ -1201,7 +1073,7 @@ int main()
         int* top_indeces = new int[5] {};
         int* index = new int[4] {};
         int* index_r = new int[4] {};
-        int top_hold = 0;
+        int top_hold = 0; 
 
         LARGE_INTEGER freq, start, end;
         QueryPerformanceFrequency(&freq);
@@ -1263,7 +1135,8 @@ int main()
                 myArray[index_prot][3] = to_string(elapsed1);
                 //write_to_excel(index_dna, index_prot);
                 total_r += elapsed1;
-                //cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed1 << endl;
+                cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed1 << endl;
+                cout << "Total runtime: " << total_r << endl;
                     
 				if (frame == 6) {
                     QueryPerformanceCounter(&start);
@@ -1373,7 +1246,7 @@ int main()
                     for (unsigned int diag = 0; diag < numSubmatrixRows + numSubmatrixCols - 1; ++diag) {
                         for (unsigned int submatrixY = std::max(0, (int)diag - (int)(numSubmatrixCols - 1)); submatrixY <= diag && submatrixY < numSubmatrixRows; ++submatrixY) {
                             int submatrixX = diag - submatrixY;
-                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream1 >> > (d_DNA_sequence, d_protein_sequence, d_sc_mat, d_ins_mat, d_del_mat, d_t_sc_mat, d_t_ins_mat, d_t_del_mat, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
+                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream1 >> > (d_DNA_sequence, d_protein_sequence, d_sc_mat, d_ins_mat, d_del_mat, d_t_sc_mat, d_t_ins_mat, d_t_del_mat, (unsigned int)N, (unsigned int)M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
                         }
 
                     }
@@ -1404,8 +1277,8 @@ int main()
                     for (unsigned int diag = 0; diag < numSubmatrixRows + numSubmatrixCols - 1; ++diag) {
                         for (unsigned int submatrixY = std::max(0, (int)diag - (int)(numSubmatrixCols - 1)); submatrixY <= diag && submatrixY < numSubmatrixRows; ++submatrixY) {
                             int submatrixX = diag - submatrixY;
-                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream1 >> > (d_DNA_sequence, d_protein_sequence, d_sc_mat, d_ins_mat, d_del_mat, d_t_sc_mat, d_t_ins_mat, d_t_del_mat, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
-                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream2 >> > (d_DNA_sequence_r, d_protein_sequence, d_sc_mat_r, d_ins_mat_r, d_del_mat_r, d_t_sc_mat_r, d_t_ins_mat_r, d_t_del_mat_r, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
+                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream1 >> > (d_DNA_sequence, d_protein_sequence, d_sc_mat, d_ins_mat, d_del_mat, d_t_sc_mat, d_t_ins_mat, d_t_del_mat, (unsigned int)N, (unsigned int)M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
+                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream2 >> > (d_DNA_sequence_r, d_protein_sequence, d_sc_mat_r, d_ins_mat_r, d_del_mat_r, d_t_sc_mat_r, d_t_ins_mat_r, d_t_del_mat_r, (unsigned int)N, (unsigned int)M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
                         }
 
                     }
