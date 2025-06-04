@@ -1104,7 +1104,7 @@ void traceV2_1d_check(string input_seq, string ref_seq, int* sc_mat, int* t_sc_m
 }
 
 void write_to_excel(int n, int i) {
-    string filename = "outputRERun" + std::to_string(n) + ".csv";
+    string filename = "outputRERunS" + std::to_string(n) + ".csv";
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
         std::cerr << "Failed to open file for writing." << std::endl;
@@ -1263,7 +1263,7 @@ int main()
                 myArray[index_prot][3] = to_string(elapsed1);
                 //write_to_excel(index_dna, index_prot);
                 total_r += elapsed1;
-                cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed1 << endl;
+                //cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed1 << endl;
                     
 				if (frame == 6) {
                     QueryPerformanceCounter(&start);
@@ -1357,9 +1357,6 @@ int main()
                 checkCudaErrors(cudaMemcpy(d_t_sc_mat_r, t_sc_mat_r, size, cudaMemcpyHostToDevice));
                 checkCudaErrors(cudaMemcpy(d_t_ins_mat_r, t_ins_mat_r, size, cudaMemcpyHostToDevice));
                 checkCudaErrors(cudaMemcpy(d_t_del_mat_r, t_del_mat_r, size, cudaMemcpyHostToDevice));
-
-                //cudaStreamSynchronize(stream1);
-                //cudaStreamSynchronize(stream2);
                 
                 dim3 blockDimMain(32, 32);
                 dim3 gridDimMain(1);
@@ -1368,72 +1365,85 @@ int main()
 				unsigned int numSubmatrixRows = ((unsigned int)N + submatrixSide - 1) / submatrixSide;
 				unsigned int numSubmatrixCols = ((unsigned int)M + submatrixSide - 1) / submatrixSide;
 
-                timer.Start();
-                
-                for (unsigned int diag = 0; diag < numSubmatrixRows + numSubmatrixCols - 1; ++diag) {
-                    for (unsigned int submatrixY = std::max(0, (int)diag - (int)(numSubmatrixCols - 1)); submatrixY <= diag && submatrixY < numSubmatrixRows; ++submatrixY) {
-                        int submatrixX = diag - submatrixY;
-                        scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream1 >> > (d_DNA_sequence, d_protein_sequence, d_sc_mat, d_ins_mat, d_del_mat, d_t_sc_mat, d_t_ins_mat, d_t_del_mat, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
-                        scoring_local_v2_cuda << <gridDimMain, blockDimMain,0, stream2 >> > (d_DNA_sequence_r, d_protein_sequence, d_sc_mat_r, d_ins_mat_r, d_del_mat_r, d_t_sc_mat_r, d_t_ins_mat_r, d_t_del_mat_r, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
-                    }
-                    
-                }
 
-                checkCudaErrors(cudaStreamSynchronize(stream1));
-                checkCudaErrors(cudaStreamSynchronize(stream2));
+                if (frame == 3) {
 
-                timer.Stop();
-
-                checkCudaErrors(cudaStreamDestroy(stream1));
-                checkCudaErrors(cudaStreamDestroy(stream2));
-
-                checkCudaErrors(cudaMemcpy(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost));
-                checkCudaErrors(cudaMemcpy(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost));
-
-                checkCudaErrors(cudaMemcpy(sc_mat_r, d_sc_mat_r, size, cudaMemcpyDeviceToHost));
-                checkCudaErrors(cudaMemcpy(t_sc_mat_r, d_t_sc_mat_r, size, cudaMemcpyDeviceToHost));
-                
-                traceV2_1d_check(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
-                //cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
-                //traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
-                myArray[index_prot][3] = to_string(timer.Elapsed());
-                write_to_excel(index_dna, index_prot);
-                cout << endl << "Score: " << index[0] << endl;
-                //top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
-                
-                
-                traceV2_1d_check(DNA_sequence_r, protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
-                cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
-                //traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat_r, u_t_sc_mat_r, N, M, index_prot, index_r);
-                cout << endl << "Score: " << index_r[0] << endl;
-                //write_to_excel(index_dna, index_prot);
-                total_r += timer.Elapsed();
-                cout << "Total runtime: " << total_r << endl;
-                //top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
-                
-                /*
-				if (frame == 6) {
-					init_local_v2_cuda(DNA_sequence_r, protein_sequence, u_sc_mat_r, u_ins_mat_r, u_del_mat_r, u_t_sc_mat_r, u_t_ins_mat_r, u_t_del_mat_r, N, M);
-						
                     timer.Start();
-                    
+
                     for (unsigned int diag = 0; diag < numSubmatrixRows + numSubmatrixCols - 1; ++diag) {
                         for (unsigned int submatrixY = std::max(0, (int)diag - (int)(numSubmatrixCols - 1)); submatrixY <= diag && submatrixY < numSubmatrixRows; ++submatrixY) {
                             int submatrixX = diag - submatrixY;
-                            scoring_local_v2_cuda << <gridDimMain, blockDimMain >> > (d_DNA_sequence_r, d_protein_sequence, u_sc_mat_r, u_ins_mat_r, u_del_mat_r, u_t_sc_mat_r, u_t_ins_mat_r, u_t_del_mat_r, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
-                            checkCudaErrors(cudaGetLastError());
+                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream1 >> > (d_DNA_sequence, d_protein_sequence, d_sc_mat, d_ins_mat, d_del_mat, d_t_sc_mat, d_t_ins_mat, d_t_del_mat, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
                         }
-                        checkCudaErrors(cudaDeviceSynchronize());
-                    }
-					timer.Stop();
 
-                    traceV2_1d_check(DNA_sequence_r, protein_sequence, u_sc_mat_r, u_t_sc_mat_r, N, M, index_prot, index_r);
+                    }
+
+                    checkCudaErrors(cudaStreamSynchronize(stream1));
+
+                    timer.Stop();
+
+                    checkCudaErrors(cudaStreamSynchronize(stream1));
+                    checkCudaErrors(cudaMemcpy(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost));
+                    checkCudaErrors(cudaMemcpy(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost));
+
+                    traceV2_1d_check(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
                     //traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
-                    cout << endl << "Score: " << index_r[0] << endl;
+                    myArray[index_prot][3] = to_string(timer.Elapsed());
+                    write_to_excel(index_dna, index_prot);
+                    cout << endl << "Score: " << index[0] << endl;
+                    //top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces)
+                    total_r += timer.Elapsed();
+                    cout << "Total runtime: " << total_r << endl;
+                }
+                
+				if (frame == 6) {
+
+                    timer.Start();
+
+                    for (unsigned int diag = 0; diag < numSubmatrixRows + numSubmatrixCols - 1; ++diag) {
+                        for (unsigned int submatrixY = std::max(0, (int)diag - (int)(numSubmatrixCols - 1)); submatrixY <= diag && submatrixY < numSubmatrixRows; ++submatrixY) {
+                            int submatrixX = diag - submatrixY;
+                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream1 >> > (d_DNA_sequence, d_protein_sequence, d_sc_mat, d_ins_mat, d_del_mat, d_t_sc_mat, d_t_ins_mat, d_t_del_mat, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
+                            scoring_local_v2_cuda << <gridDimMain, blockDimMain, 0, stream2 >> > (d_DNA_sequence_r, d_protein_sequence, d_sc_mat_r, d_ins_mat_r, d_del_mat_r, d_t_sc_mat_r, d_t_ins_mat_r, d_t_del_mat_r, N, M, submatrixX * submatrixSide, submatrixY * submatrixSide, submatrixSide);
+                        }
+
+                    }
+
+                    checkCudaErrors(cudaStreamSynchronize(stream1));
+                    checkCudaErrors(cudaStreamSynchronize(stream2));
+
+                    timer.Stop();
+
+                    checkCudaErrors(cudaStreamDestroy(stream1));
+                    checkCudaErrors(cudaStreamDestroy(stream2));
+
+                    checkCudaErrors(cudaMemcpy(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost));
+                    checkCudaErrors(cudaMemcpy(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost));
+
+                    checkCudaErrors(cudaMemcpy(sc_mat_r, d_sc_mat_r, size, cudaMemcpyDeviceToHost));
+                    checkCudaErrors(cudaMemcpy(t_sc_mat_r, d_t_sc_mat_r, size, cudaMemcpyDeviceToHost));
+
+                    traceV2_1d_check(DNA_sequence, protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
+                    //cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
+                    //traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat, u_t_sc_mat, N, M, index_prot, index);
+                    myArray[index_prot][3] = to_string(timer.Elapsed());
+                    //write_to_excel(index_dna, index_prot);
+                    cout << endl << "Score: " << index[0] << endl;
                     //top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
+
+
+                    traceV2_1d_check(DNA_sequence_r, protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
+                    cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
+                    //traceV2_1d(DNA_sequence, protein_sequence, u_sc_mat_r, u_t_sc_mat_r, N, M, index_prot, index_r);
+                    cout << endl << "Score: " << index_r[0] << endl;
+                    //write_to_excel(index_dna, index_prot);
+                    total_r += timer.Elapsed();
+                    cout << "Total runtime: " << total_r << endl;
+                    //top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
+
 				}
-				*/
+				
 
                 checkCudaErrors(cudaFree(d_DNA_sequence));
                 checkCudaErrors(cudaFree(d_protein_sequence));
