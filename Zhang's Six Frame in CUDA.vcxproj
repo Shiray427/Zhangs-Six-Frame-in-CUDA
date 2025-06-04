@@ -97,7 +97,7 @@
       <EnableVirtualArchInFatbin>true</EnableVirtualArchInFatbin>
       <GenerateRelocatableDeviceCode>false</GenerateRelocatableDeviceCode>
       <ExtensibleWholeProgramCompilation>false</ExtensibleWholeProgramCompilation>
-      <SplitCompile>ExtendedMaxThreads</SplitCompile>
+      <SplitCompile>MaxThreads</SplitCompile>
     </CudaCompile>
     <CudaLink>
       <PerformDeviceLinkTimeOptimization>true</PerformDeviceLinkTimeOptimization>
