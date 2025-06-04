@@ -117,10 +117,12 @@
     <Text Include="Resource Files\BLOSUM62.txt" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Resource Files\finalInput.fasta" />
     <None Include="Resource Files\Fruit_Fly_DNA_Final.fasta" />
     <None Include="Resource Files\Fruit_Fly_Protein_Final.fasta" />
     <None Include="Resource Files\Mouse_Crest_DNA_Final.fasta" />
     <None Include="Resource Files\Mouse_Crest_Protein_Final.fasta" />
+    <None Include="Resource Files\result.fasta" />
     <None Include="Resource Files\testDNA.fasta" />
     <None Include="Resource Files\testProt.fasta" />
   </ItemGroup>

@@ -45,5 +45,11 @@
     <None Include="Resource Files\testProt.fasta">
       <Filter>Resource Files</Filter>
     </None>
+    <None Include="Resource Files\finalInput.fasta">
+      <Filter>Resource Files</Filter>
+    </None>
+    <None Include="Resource Files\result.fasta">
+      <Filter>Resource Files</Filter>
+    </None>
   </ItemGroup>
 </Project>
