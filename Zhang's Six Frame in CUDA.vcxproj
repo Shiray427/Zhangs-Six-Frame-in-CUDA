@@ -97,7 +97,6 @@
       <EnableVirtualArchInFatbin>true</EnableVirtualArchInFatbin>
       <GenerateRelocatableDeviceCode>false</GenerateRelocatableDeviceCode>
       <ExtensibleWholeProgramCompilation>false</ExtensibleWholeProgramCompilation>
-      <MaxRegCount>98</MaxRegCount>
       <SplitCompile>ExtendedMaxThreads</SplitCompile>
     </CudaCompile>
     <CudaLink>
