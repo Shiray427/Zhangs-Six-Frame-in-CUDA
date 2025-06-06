@@ -711,20 +711,19 @@ void traceV2_1d_check(char* input_seq, char* ref_seq, int* sc_mat, int* t_sc_mat
     i = i_max;
     j = j_max;
 
-    cout << max_score << endl;
-
     myArray[index][0] = to_string(max_score);
     myArray[index][2] = to_string(j_max);
 
     while (sc_mat[i * M + j] != 0) {
         myArray[index][1] = to_string(j);
+        indeces[3] = j;
         routine(t_sc_mat[i * M + j], i, j, input_seq, ref_seq, seq_dna, seq_prot, frameshift);
     }
 
 }
 
 void write_to_excel(int n, int i) {
-    string filename = "outputRERunS" + std::to_string(n) + ".csv";
+    string filename = "outputRun" + std::to_string(n) + ".csv";
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
         std::cerr << "Failed to open file for writing." << std::endl;
@@ -810,7 +809,7 @@ int main()
 
     double total_r = 0.0;
 
-    for (int index_dna = 5; index_dna < 10; index_dna++) {
+    for (int index_dna = 0; index_dna < 5; index_dna++) {
 
         int* score_top1 = new int [5] {};
         int* top_scores = new int[5] {};
@@ -878,7 +877,7 @@ int main()
                 double elapsed1 = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
                 traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
-                top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
+                top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
                 myArray[index_prot][3] = to_string(elapsed1);
                 //write_to_excel(index_dna, index_prot);
                 total_r += elapsed1;
@@ -891,13 +890,25 @@ int main()
                     QueryPerformanceCounter(&end);
                     double elapsed = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
-                    traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
-                    top5(index[0], index_prot, index[1], index[3], top_scores, top_i, top_j, top_indeces);
+                    traceV2_1d_check(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
                     myArray[index_prot][3] = to_string(elapsed+elapsed1);
-                    //write_to_excel(index_dna, index_prot);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed+elapsed1 << endl;
                     total_r += elapsed;
                     cout << "Total runtime: " << total_r << endl;
+
+                    if (index[0] >= index_r[0]) {
+                        myArray[index_prot][0] = to_string(index[0]);
+                        myArray[index_prot][1] = to_string(index[3]);
+                        myArray[index_prot][2] = to_string(index[2]);
+                        top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
+                    }
+                    else {
+                        myArray[index_prot][0] = to_string(index_r[0]);
+                        myArray[index_prot][1] = to_string(index_r[3]);
+                        myArray[index_prot][2] = to_string(index_r[2]);
+                        top5(index_r[0], index_prot, index_r[1], index_r[2], top_scores, top_i, top_j, top_indeces);
+                    }
+                    write_to_excel(index_dna, index_prot);
 				}
             }
             else if (mode == 1) {
@@ -1015,7 +1026,7 @@ int main()
                     traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
                     myArray[index_prot][3] = to_string(timer.Elapsed());
-                    //write_to_excel(index_dna, index_prot);
+                    write_to_excel(index_dna, index_prot);
                     top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
                     total_r += timer.Elapsed();
                     cout << "Total runtime: " << total_r << endl;
@@ -1057,16 +1068,27 @@ int main()
                     traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
                     myArray[index_prot][3] = to_string(timer.Elapsed());
-                    //write_to_excel(index_dna, index_prot);
-                    top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
 
-
-                    traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
+                    traceV2_1d_check(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
-                    //write_to_excel(index_dna, index_prot);
+                    
                     total_r += timer.Elapsed();
                     cout << "Total runtime: " << total_r << endl;
-                    top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
+
+                    if (index[0] >= index_r[0]) {
+                        myArray[index_prot][0] = to_string(index[0]);
+                        myArray[index_prot][1] = to_string(index[3]);
+                        myArray[index_prot][2] = to_string(index[2]);
+                        top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indeces);
+                    }
+                    else {
+                        myArray[index_prot][0] = to_string(index_r[0]);
+                        myArray[index_prot][1] = to_string(index_r[3]);
+                        myArray[index_prot][2] = to_string(index_r[2]);
+                        top5(index_r[0], index_prot, index_r[1], index_r[2], top_scores, top_i, top_j, top_indeces);
+                    }
+
+                    write_to_excel(index_dna, index_prot);
 
 				}
 
@@ -1170,10 +1192,15 @@ int main()
                     QueryPerformanceCounter(&end);
                     double elapsed1 = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
-                    traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
-                    cout << endl << "Score: " << top_scores[i] << endl;
-                    cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
-                    cout << "Time in ms: " << elapsed1 << endl << endl;
+                    traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+
+                    if (frame == 3) {
+                        traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                        cout << endl << "Score: " << top_scores[i] << endl;
+                        cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                        cout << "Time in ms: " << elapsed1 << endl << endl;
+                    }
+                    
 
 				    if (frame == 6) {
                         QueryPerformanceCounter(&start);
@@ -1181,10 +1208,21 @@ int main()
                         QueryPerformanceCounter(&end);
                         double elapsed = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
-                        traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index);
-                        cout << endl << "Score: " << top_scores[i] << endl;
-                        cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
-                        cout << "Time in ms: " << elapsed << endl << endl;
+                        traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index_r);
+
+                        if (index[0] >= index_r[0]) {
+                            traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                            cout << endl << "Score: " << top_scores[i] << endl;
+                            cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                            cout << "Time in ms: " << elapsed1 << endl << endl;
+                        }
+                        else {
+                            cout << "Reverse: " << endl;
+                            traceV2_1d(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index_r);
+                            cout << endl << "Score: " << top_scores[i] << endl;
+                            cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                            cout << "Time in ms: " << elapsed << endl << endl;
+                        }
 				    }
                 }
                 else if (mode == 1 && top_hold == top_scores[i]) {
@@ -1300,6 +1338,9 @@ int main()
                         checkCudaErrors(cudaMemcpy(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost));
 
                         traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                        cout << endl << "Score: " << top_scores[i] << endl;
+                        cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                        cout << "Time in ms: " << timer.Elapsed() << endl << endl;
          
                     }
                 
@@ -1336,10 +1377,22 @@ int main()
                         checkCudaErrors(cudaMemcpy(sc_mat_r, d_sc_mat_r, size, cudaMemcpyDeviceToHost));
                         checkCudaErrors(cudaMemcpy(t_sc_mat_r, d_t_sc_mat_r, size, cudaMemcpyDeviceToHost));
 
-                        traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
-                        traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index);
+                        traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                        traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index_r);
 
-                        
+                        if (index[0] >= index_r[0]) {
+                            traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                            cout << endl << "Score: " << top_scores[i] << endl;
+                            cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                            cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                        }
+                        else {
+                            cout << "Reverse: " << endl;
+                            traceV2_1d(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index_r);
+                            cout << endl << "Score: " << top_scores[i] << endl;
+                            cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                            cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                        }
 
 				    }
 
@@ -1421,10 +1474,15 @@ int main()
                     QueryPerformanceCounter(&end);
                     double elapsed1 = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
-                    traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
-                    cout << endl << "Score: " << top_scores[i] << endl;
-                    cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
-                    cout << "Time in ms: " << elapsed1 << endl << endl;
+                    traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+
+                    if (frame == 3) {
+                        traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                        cout << endl << "Score: " << top_scores[i] << endl;
+                        cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                        cout << "Time in ms: " << elapsed1 << endl << endl;
+                    }
+                    
 
                     if (frame == 6) {
                         QueryPerformanceCounter(&start);
@@ -1432,10 +1490,21 @@ int main()
                         QueryPerformanceCounter(&end);
                         double elapsed = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
-                        traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index);
-                        cout << endl << "Score: " << top_scores[i] << endl;
-                        cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
-                        cout << "Time in ms: " << elapsed << endl << endl;
+                        traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index);
+
+                        if (index[0] >= index_r[0]) {
+                            traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                            cout << endl << "Score: " << top_scores[i] << endl;
+                            cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                            cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                        }
+                        else {
+                            cout << "Reverse: " << endl;
+                            traceV2_1d(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index_r);
+                            cout << endl << "Score: " << top_scores[i] << endl;
+                            cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                            cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                        }
                     }
                 }
                 else if (mode == 1) {
@@ -1590,14 +1659,22 @@ int main()
                         checkCudaErrors(cudaMemcpy(sc_mat_r, d_sc_mat_r, size, cudaMemcpyDeviceToHost));
                         checkCudaErrors(cudaMemcpy(t_sc_mat_r, d_t_sc_mat_r, size, cudaMemcpyDeviceToHost));
 
-                        traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
-                        cout << endl << "Score: " << top_scores[i] << endl;
-                        cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
-                        cout << "Time in ms: " << timer.Elapsed() << endl << endl;
-                        traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index);
-                        cout << endl << "Score: " << top_scores[i] << endl;
-                        cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
-                        cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                        traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                        traceV2_1d_check(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index_r);
+
+                        if (index[0] >= index_r[0]) {
+                            traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indeces[i], index);
+                            cout << endl << "Score: " << top_scores[i] << endl;
+                            cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                            cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                        }
+                        else {
+                            cout << "Reverse: " << endl;
+                            traceV2_1d(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indeces[i], index_r);
+                            cout << endl << "Score: " << top_scores[i] << endl;
+                            cout << "Start to End match in Protein: " << myArray[top_indeces[i]][1] << "-" << myArray[top_indeces[i]][2] << endl << endl;
+                            cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                        }
                     }
 
                     checkCudaErrors(cudaFree(d_DNA_sequence));
@@ -1624,8 +1701,7 @@ int main()
                 }
             }
         }
-
-
+        
         delete[] score_top1;
         delete[] top_scores;
         delete[] top_i;
