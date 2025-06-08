@@ -572,7 +572,6 @@ void routine(int trace, int& i, int& j, char* str, char* ref_seq, string& final_
         final_seq1 += d_DNA_to_Protein(str, k - 1, k, k + 1);
         final_seq2 += ref_seq[j];
         frameshift += " ";
-
     }
     else if (trace == -2) {
         j--;
@@ -586,14 +585,6 @@ void routine(int trace, int& i, int& j, char* str, char* ref_seq, string& final_
         k = i + 3;
         final_seq1 += d_DNA_to_Protein(str, k - 1, k, k + 1);;
         final_seq2 += "-";
-        frameshift += " ";
-    }
-    else if (trace == 1) {
-        i--;
-        j--;
-        k = i + 1;
-        final_seq1 += d_DNA_to_Protein(str, k - 1, k, k + 1);
-        final_seq2 += ref_seq[j];
         frameshift += " ";
     }
     else if (trace == 4) {
@@ -612,6 +603,14 @@ void routine(int trace, int& i, int& j, char* str, char* ref_seq, string& final_
         final_seq1 += d_DNA_to_Protein(str, k - 1, k, k + 1);
         final_seq2 += ref_seq[j];
         frameshift += "*";
+    }
+    else if (trace == 1) {
+        i--;
+        j--;
+        k = i + 1;
+        final_seq1 += d_DNA_to_Protein(str, k - 1, k, k + 1);
+        final_seq2 += ref_seq[j];
+        frameshift += " ";
     }
 }
 
