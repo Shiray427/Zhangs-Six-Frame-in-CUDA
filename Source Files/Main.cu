@@ -37,8 +37,8 @@ using std::min;
 
 namespace cg = cooperative_groups;
 
-constexpr int gep = 2; // opening penalty
-constexpr int gop = 3; // extend penalty
+constexpr int gep = 2; // extend penalty  
+constexpr int gop = 3; // opening penalty
 constexpr int shift = 4; // shift penalty
 constexpr int infn = -999;
 string myArray[40000][5];
@@ -49,8 +49,8 @@ static int prot_to_idx[128];
 __constant__ int d_blosum62mat[24][24];
 __constant__ int d_prot_to_idx[128];
 
-__constant__ int c_gep = 2; // opening penalty
-__constant__ int c_gop = 3; // extend penalty
+__constant__ int c_gep = 2; // extend penalty
+__constant__ int c_gop = 12; // opening penalty
 __constant__ int c_shift = 4; // shift penalty
 int score_top[4];
 
@@ -186,7 +186,7 @@ void initialize_protein_to_int_map() {
     host_map['B'] = 20;
     host_map['Z'] = 21;
     host_map['X'] = 22;
-    host_map['*'] = 23;
+    host_map['U'] = 23;
 
     for (int i = 0; i < 128; ++i)
         prot_to_idx[i] = host_map[i];
@@ -315,6 +315,13 @@ void init_local_v2(char* input_seq, char* ref_seq, int* sc_mat, int* ins_mat, in
         t_del_mat[1 * M + j] = 1;
     }
 
+    for (size_t i = 4; i < N; i++) {
+        del = del_mat[(i - 3) * M + 0] - gep;
+        xscore = sc_mat[(i - 3) * M + 0] - gop - gep;
+
+        del_mat[i * M + 0] = (del > xscore) ? del : xscore;
+    }
+
 
     for (size_t i = 0; i < 4; i++) {
         for (size_t j = 1; j < M; j++) {
@@ -338,53 +345,36 @@ void init_local_v2(char* input_seq, char* ref_seq, int* sc_mat, int* ins_mat, in
                 xscore = sc_mat[0 * M + (j - 1)] + score(prot_seq, ref_seq[j - 1]);
                 if (insert >= del && insert >= xscore) {
                     sc_mat[i * M + j] = insert;
+                    t_sc_mat[i * M + j] = -2;
                 }
                 else if (del >= insert && del >= xscore) {
                     sc_mat[i * M + j] = del;
+                    t_sc_mat[i * M + j] = -1;
                 }
                 else {
                     sc_mat[i * M + j] = xscore;
-                }
-
-                if (sc_mat[i * M + j] == ins_mat[i * M + j]) {
-                    t_sc_mat[i * M + j] = -2;
-                }
-                else if (sc_mat[i * M + j] == del_mat[i * M + j]) {
-                    t_sc_mat[i * M + j] = -1;
-                }
-                else if (sc_mat[i * M + j] == xscore) {
                     t_sc_mat[i * M + j] = 1;
                 }
             }
             else if (i == 2) {
                 xscore = sc_mat[0 * M + (j - 1)] + score(prot_seq, ref_seq[j - 1]) - shift;
-                if (insert >= xscore) {
+                if (insert > xscore) {
                     sc_mat[i * M + j] = insert;
+                    t_sc_mat[i * M + j] = -2;
                 }
                 else {
                     sc_mat[i * M + j] = xscore;
-                }
-
-                if (sc_mat[i * M + j] == ins_mat[i * M + j]) {
-                    t_sc_mat[i * M + j] = -2;
-                }
-                else if (sc_mat[i * M + j] == xscore) {
                     t_sc_mat[i * M + j] = 2;
                 }
             }
             else if (i == 3) {
                 xscore = sc_mat[1 * M + (j - 1)] + score(prot_seq, ref_seq[j - 1]) - shift;
-                if (insert >= xscore) {
+                if (insert > xscore) {
                     sc_mat[i * M + j] = insert;
+                    t_sc_mat[i * M + j] = -2;
                 }
                 else {
                     sc_mat[i * M + j] = xscore;
-                }
-
-                if (sc_mat[i * M + j] == ins_mat[i * M + j]) {
-                    t_sc_mat[i * M + j] = -2;
-                }
-                else if (sc_mat[i * M + j] == xscore) {
                     t_sc_mat[i * M + j] = 2;
                 }
             }
@@ -409,8 +399,8 @@ void scoring_local_v2(const char* input_seq, const char* ref_seq, int* sc_mat, i
             del = del_mat[(i - 3) * M + j] - gep;
             xscore = sc_mat[(i - 3) * M + j] - gop - gep;
 
-            del_mat[i * M + j] = (del >= xscore) ? del : xscore;
-            t_del_mat[i * M + j] = (del >= xscore) ? 0 : 1;
+            del_mat[i * M + j] = (del > xscore) ? del : xscore;
+            t_del_mat[i * M + j] = (del > xscore) ? 0 : 1;
 
 
             if (i < N - 1) {
@@ -428,13 +418,13 @@ void scoring_local_v2(const char* input_seq, const char* ref_seq, int* sc_mat, i
                     sc_mat[i * M + j] = del;
                     t_sc_mat[i * M + j] = -1;
                 }
-                else if (sc_1 >= insert && sc_1 >= del && sc_1 >= sc_2 && sc_1 >= sc_3) {
-                    sc_mat[i * M + j] = sc_1;
-                    t_sc_mat[i * M + j] = 2;
-                }
                 else if (sc_2 >= insert && sc_2 >= del && sc_2 >= sc_1 && sc_2 >= sc_3) {
                     sc_mat[i * M + j] = sc_2;
                     t_sc_mat[i * M + j] = 3;
+                }
+                else if (sc_1 >= insert && sc_1 >= del && sc_1 >= sc_2 && sc_1 >= sc_3) {
+                    sc_mat[i * M + j] = sc_1;
+                    t_sc_mat[i * M + j] = 2;
                 }
                 else if (sc_3 >= insert && sc_3 >= del && sc_3 >= sc_1 && sc_3 >= sc_2) {
                     sc_mat[i * M + j] = sc_3;
@@ -448,16 +438,8 @@ void scoring_local_v2(const char* input_seq, const char* ref_seq, int* sc_mat, i
             }
 
             if (i == N - 1) {
-                insert = ins_mat[i * M + (j - 1)] - gep;
-                xscore = sc_mat[i * M + (j - 1)] - gop - gep;
-                if (insert >= xscore) {
-                    ins_mat[i * M + j] = insert;
-                }
-                else {
-                    ins_mat[i * M + j] = xscore;
-                }
-
-                sc_mat[i * M + j] = infn;
+                ins_mat[i * M + j] = infn;
+                sc_mat[i * M + j] = 0;
                 t_sc_mat[i * M + j] = infn;
             }
         }
@@ -486,11 +468,8 @@ __global__ void scoring_local_v2_cuda(const char* __restrict__ input_seq, const 
             for (unsigned int sub_diag_in_tile = 0; sub_diag_in_tile < 2 * submatrixSide - 1; ++sub_diag_in_tile) {
                 if (((i - (submatrixStartY * blockDim.y)) + (j - (submatrixStartX * blockDim.x))) == sub_diag_in_tile) {
                    if (i == N - 1) {
-                        insert = u_ins_mat[i * M + (j - 1)] - c_gep;
-                        xscore = u_sc_mat[i * M + (j - 1)] - c_gop - c_gep;
-
-                        u_ins_mat[i * M + j] = (insert >= xscore) ? insert : xscore;
-                        u_sc_mat[i * M + j] = infn;
+                        u_ins_mat[i * M + j] = infn;
+                        u_sc_mat[i * M + j] = 0;
                         u_t_sc_mat[i * M + j] = infn;
                     }
                     else {
@@ -505,8 +484,8 @@ __global__ void scoring_local_v2_cuda(const char* __restrict__ input_seq, const 
                         del = u_del_mat[(i - 3) * M + j] - c_gep;
                         xscore = u_sc_mat[(i - 3) * M + j] - c_gop - c_gep;
 
-                        u_del_mat[i * M + j] = (del >= xscore) ? del : xscore;
-                        u_t_del_mat[i * M + j] = (del >= xscore) ? 0 : 1;
+                        u_del_mat[i * M + j] = (del > xscore) ? del : xscore;
+                        u_t_del_mat[i * M + j] = (del > xscore) ? 0 : 1;
 
                         insert = u_ins_mat[i * M + j];
                         del = u_del_mat[i * M + j];
@@ -520,13 +499,14 @@ __global__ void scoring_local_v2_cuda(const char* __restrict__ input_seq, const 
                         max_current_score = (insert >= del) ? insert : del;
                         trace_value = (insert >= del) ? -2 : -1;
 
-                        if (sc_1 > max_current_score) {
-                            max_current_score = sc_1;
-                            trace_value = 2;
-                        }
+
                         if (sc_2 > max_current_score) {
                             max_current_score = sc_2;
                             trace_value = 3;
+                        }
+                        if (sc_1 > max_current_score) {
+                            max_current_score = sc_1;
+                            trace_value = 2;
                         }
                         if (sc_3 > max_current_score) {
                             max_current_score = sc_3;
@@ -564,7 +544,7 @@ void top5(int score, int index, int top_i, int top_j, int* score_top, int* top_i
 
 void routine(int trace, int& i, int& j, char* str, char* ref_seq, string& final_seq1, string& final_seq2, string& frameshift) {
     int k = 0;
-
+   
     if (trace == 3) {
         i -= 3;
         j--;
@@ -575,7 +555,6 @@ void routine(int trace, int& i, int& j, char* str, char* ref_seq, string& final_
     }
     else if (trace == -2) {
         j--;
-        k = i + 3;
         final_seq1 += "-";
         final_seq2 += ref_seq[j];
         frameshift += " ";
@@ -583,7 +562,7 @@ void routine(int trace, int& i, int& j, char* str, char* ref_seq, string& final_
     else if (trace == -1) {
         i -= 3;
         k = i + 3;
-        final_seq1 += d_DNA_to_Protein(str, k - 1, k, k + 1);;
+        final_seq1 += d_DNA_to_Protein(str, k - 1, k, k + 1);
         final_seq2 += "-";
         frameshift += " ";
     }
@@ -615,9 +594,8 @@ void routine(int trace, int& i, int& j, char* str, char* ref_seq, string& final_
 }
 
 void traceV2_1d(char* input_seq, char* ref_seq, int* sc_mat, int* t_sc_mat, int N, int M, int index, int* indexes) {
-    int i_max = 0, j_max = 0, i = 0, j = 0, max_score = 0, curr_score;
+    int i_max = 0, j_max = 0, i = 0, j = 0, max_score = 0, curr_score, print =0;
     string f1, f2, f3, seq_dna, seq_prot, frameshift;
-    three_frame(input_seq, &f1, &f2, &f3);
 
     for (int i = 0; i < N; i++) {
         for (int j = 0; j < M; j++) {
@@ -638,14 +616,16 @@ void traceV2_1d(char* input_seq, char* ref_seq, int* sc_mat, int* t_sc_mat, int 
     indexes[2] = j_max;
 
     while (sc_mat[i * M + j] != 0) {
-        myArray[index][1] = to_string(j);
+        indexes[3] = j;
         routine(t_sc_mat[i * M + j], i, j, input_seq, ref_seq, seq_dna, seq_prot, frameshift);
+        print = i;
     }
-
     cout << endl;
     reverse(seq_dna.begin(), seq_dna.end());
     reverse(seq_prot.begin(), seq_prot.end());
     reverse(frameshift.begin(), frameshift.end());
+
+    three_frame(input_seq, &f1, &f2, &f3);
 
     cout << "DNA Input:\t";
     for (i = 0; i < strlen(input_seq); i++) {
@@ -683,6 +663,7 @@ void traceV2_1d(char* input_seq, char* ref_seq, int* sc_mat, int* t_sc_mat, int 
         cout << seq_prot[i] << "  ";
     }
     cout << endl;
+
 }
 
 void traceV2_1d_check(char* input_seq, char* ref_seq, int* sc_mat, int* t_sc_mat, size_t N, size_t M, int index, int* indexes) {
@@ -721,7 +702,7 @@ void traceV2_1d_check(char* input_seq, char* ref_seq, int* sc_mat, int* t_sc_mat
 }
 
 void write_to_excel(int n, int i) {
-    string filename = "outputRun" + std::to_string(n) + ".csv";
+    string filename = "outputRun6F" + std::to_string(n) + ".csv";
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
         std::cerr << "Failed to open file for writing." << std::endl;
@@ -739,7 +720,6 @@ int main()
     int mode, frame, top, device;
     vector<string> dnaInputs, proteinInputs, proteinIdInputs;
     string protein_sequence, DNA_sequence, DNA_sequence_r, file_name;
-    cudaDeviceProp prop;
     GpuTimer timer;
 
     checkCudaErrors(cudaGetDevice(&device));
@@ -872,8 +852,8 @@ int main()
                 double elapsed1 = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
                 traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
-                top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indexes);
                 myArray[index_prot][3] = to_string(elapsed1);
+                top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indexes);
                 //write_to_excel(index_dna, index_prot);
                 total_r += elapsed1;
                 cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed1 << endl;
@@ -895,7 +875,6 @@ int main()
                         myArray[index_prot][0] = to_string(index[0]);
                         myArray[index_prot][1] = to_string(index[3]);
                         myArray[index_prot][2] = to_string(index[2]);
-                        top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indexes);
                     }
                     else {
                         myArray[index_prot][0] = to_string(index_r[0]);
@@ -1025,6 +1004,7 @@ int main()
                     top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indexes);
                     total_r += timer.Elapsed();
                     cout << "Total runtime: " << total_r << endl;
+
                 }
                 
 				if (frame == 6) {
@@ -1208,14 +1188,14 @@ int main()
                         if (index[0] >= index_r[0]) {
                             traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indexes[i], index);
                             cout << endl << "Score: " << top_scores[i] << endl;
-                            cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
+                            cout << "Start to End match in Protein: " << index[3] << "-" << index[2] << endl << endl;
                             cout << "Time in ms: " << elapsed1 << endl << endl;
                         }
                         else {
                             cout << "Reverse: " << endl;
                             traceV2_1d(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indexes[i], index_r);
                             cout << endl << "Score: " << top_scores[i] << endl;
-                            cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
+                            cout << "Start to End match in Protein: " << index_r[3] << "-" << index_r[2] << endl << endl;
                             cout << "Time in ms: " << elapsed << endl << endl;
                         }
 				    }
@@ -1373,19 +1353,19 @@ int main()
                         checkCudaErrors(cudaMemcpy(t_sc_mat_r, d_t_sc_mat_r, size, cudaMemcpyDeviceToHost));
 
                         traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indexes[i], index);
-                        traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indexes[i], index_r);
+                        traceV2_1d_check(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indexes[i], index_r);
 
                         if (index[0] >= index_r[0]) {
                             traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indexes[i], index);
                             cout << endl << "Score: " << top_scores[i] << endl;
-                            cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
+                            cout << "Start to End match in Protein: " << index[3] << "-" << index[2] << endl << endl;
                             cout << "Time in ms: " << timer.Elapsed() << endl << endl;
                         }
                         else {
                             cout << "Reverse: " << endl;
                             traceV2_1d(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indexes[i], index_r);
                             cout << endl << "Score: " << top_scores[i] << endl;
-                            cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
+                            cout << "Start to End match in Protein: " << index_r[3] << "-" << index_r[2] << endl << endl;
                             cout << "Time in ms: " << timer.Elapsed() << endl << endl;
                         }
 
@@ -1452,7 +1432,6 @@ int main()
                 size_t N_size = (N) * sizeof(char);
                 size_t M_size = (M) * sizeof(char);
                 size_t size = (N) * (M) * sizeof(int);
-                top_hold = top_scores[0];
 
                 int* sc_mat = (int*)malloc(size);
                 int* ins_mat = (int*)malloc(size);
@@ -1498,7 +1477,7 @@ int main()
                     if (frame == 3) {
                         traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indexes[i], index);
                         cout << endl << "Score: " << top_scores[i] << endl;
-                        cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
+                        cout << "Start to End match in Protein: " << index[3] << "-" << index[2] << endl << endl;
                         cout << "Time in ms: " << elapsed1 << endl << endl;
                     }
                     
@@ -1509,20 +1488,20 @@ int main()
                         QueryPerformanceCounter(&end);
                         double elapsed = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
-                        traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indexes[i], index);
+                        traceV2_1d_check(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indexes[i], index_r);
 
                         if (index[0] >= index_r[0]) {
                             traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indexes[i], index);
                             cout << endl << "Score: " << top_scores[i] << endl;
-                            cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
-                            cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                            cout << "Start to End match in Protein: " << index[3] << "-" << index[2] << endl << endl;
+                            cout << "Time in ms: " << elapsed1 << endl << endl;
                         }
                         else {
                             cout << "Reverse: " << endl;
                             traceV2_1d(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indexes[i], index_r);
                             cout << endl << "Score: " << top_scores[i] << endl;
-                            cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
-                            cout << "Time in ms: " << timer.Elapsed() << endl << endl;
+                            cout << "Start to End match in Protein: " << index_r[3] << "-" << index_r[2] << endl << endl;
+                            cout << "Time in ms: " << elapsed << endl << endl;
                         }
                     }
                 }
@@ -1640,7 +1619,7 @@ int main()
 
                         traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indexes[i], index);
                         cout << endl << "Score: " << top_scores[i] << endl;
-                        cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
+                        cout << "Start to End match in Protein: " << index[3] << "-" << index[2] << endl << endl;
                         cout << "Time in ms: " << timer.Elapsed() << endl << endl;
 
                     }
@@ -1684,14 +1663,14 @@ int main()
                         if (index[0] >= index_r[0]) {
                             traceV2_1d(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, top_indexes[i], index);
                             cout << endl << "Score: " << top_scores[i] << endl;
-                            cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
+                            cout << "Start to End match in Protein: " << index[3] << "-" << index[2] << endl << endl;
                             cout << "Time in ms: " << timer.Elapsed() << endl << endl;
                         }
                         else {
                             cout << "Reverse: " << endl;
                             traceV2_1d(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, top_indexes[i], index_r);
                             cout << endl << "Score: " << top_scores[i] << endl;
-                            cout << "Start to End match in Protein: " << myArray[top_indexes[i]][1] << "-" << myArray[top_indexes[i]][2] << endl << endl;
+                            cout << "Start to End match in Protein: " << index_r[3] << "-" << index_r[2] << endl << endl;
                             cout << "Time in ms: " << timer.Elapsed() << endl << endl;
                         }
                     }
