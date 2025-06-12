@@ -50,7 +50,7 @@ __constant__ int d_blosum62mat[24][24];
 __constant__ int d_prot_to_idx[128];
 
 __constant__ int c_gep = 2; // extend penalty
-__constant__ int c_gop = 12; // opening penalty
+__constant__ int c_gop = 3; // opening penalty
 __constant__ int c_shift = 4; // shift penalty
 int score_top[4];
 
@@ -785,7 +785,7 @@ int main()
 
     double total_r = 0.0;
 
-    for (int index_dna = 0; index_dna < 5; index_dna++) {
+    for (int index_dna = 0; index_dna < dnaInputs.size(); index_dna++) {
 
         int* top_scores = new int[5] {};
         int* top_i = new int[5] {};
@@ -800,7 +800,7 @@ int main()
 
         for (int index_prot = 0; index_prot < proteinInputs.size(); index_prot++) {
             
-			DNA_sequence = dnaInputs[0];
+			DNA_sequence = dnaInputs[index_dna];
 			protein_sequence = proteinInputs[index_prot];
             DNA_sequence_r = reverse_complement(DNA_sequence);
 
@@ -882,7 +882,7 @@ int main()
                         myArray[index_prot][2] = to_string(index_r[2]);
                         top5(index_r[0], index_prot, index_r[1], index_r[2], top_scores, top_i, top_j, top_indexes);
                     }
-                    //write_to_excel(index_dna, index_prot);
+                    write_to_excel(index_dna, index_prot);
 				}
             }
             else if (mode == 1) {
@@ -1063,7 +1063,7 @@ int main()
                         top5(index_r[0], index_prot, index_r[1], index_r[2], top_scores, top_i, top_j, top_indexes);
                     }
 
-                    //write_to_excel(index_dna, index_prot);
+                    write_to_excel(index_dna, index_prot);
 
 				}
 

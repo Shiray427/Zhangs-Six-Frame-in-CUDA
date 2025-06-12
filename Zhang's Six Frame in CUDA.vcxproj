@@ -66,6 +66,7 @@
       <Runtime>MTd</Runtime>
       <CudaRuntime>Static</CudaRuntime>
       <CodeGeneration>compute_70,sm_70; compute_89,sm_89; compute_86,sm_86</CodeGeneration>
+      <Optimization>O1</Optimization>
     </CudaCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -91,7 +92,7 @@
       <UseHostInclude>false</UseHostInclude>
       <Runtime>MT</Runtime>
       <CudaRuntime>Shared</CudaRuntime>
-      <CodeGeneration>compute_75,sm_75;compute_89,sm_89;compute_86,sm_86</CodeGeneration>
+      <CodeGeneration>compute_89,sm_89;compute_86,sm_86</CodeGeneration>
       <Optimization>O3</Optimization>
       <FastMath>true</FastMath>
       <EnableVirtualArchInFatbin>true</EnableVirtualArchInFatbin>
