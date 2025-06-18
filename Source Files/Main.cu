@@ -702,7 +702,7 @@ void traceV2_1d_check(char* input_seq, char* ref_seq, int* sc_mat, int* t_sc_mat
 }
 
 void write_to_excel(int n, int i) {
-    string filename = "outputRun6F" + std::to_string(n) + ".csv";
+    string filename = "outputRun6FTimings" + std::to_string(n) + ".csv";
     std::ofstream file(filename, std::ios::app);
     if (!file.is_open()) {
         std::cerr << "Failed to open file for writing." << std::endl;
@@ -811,8 +811,14 @@ int main()
             size_t M_size = (M) * sizeof(char);
 			size_t size = (N) * (M) * sizeof(int);
 
+            double per_setup = 0.0;
+            double per_init = 0.0;
+            double per_score = 0.0;
+            double per_trace = 0.0;
+
             myArray[index_prot][4] = to_string(protein_sequence.length());
             
+            QueryPerformanceCounter(&start);
             int* sc_mat = (int*)malloc(size);
             int* ins_mat = (int*)malloc(size);
             int* del_mat = (int*)malloc(size);
@@ -841,9 +847,15 @@ int main()
             memcpy(c_protein_sequence, protein_sequence.c_str(), M_size);
             memcpy(c_DNA_sequence_r, DNA_sequence_r.c_str(), N_size);
 
+            QueryPerformanceCounter(&end);
+            per_setup = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
+
+            QueryPerformanceCounter(&start);
             init_local_v2(c_DNA_sequence, c_protein_sequence, sc_mat, ins_mat, del_mat, t_sc_mat, t_ins_mat, t_del_mat, N, M);
             if (frame == 6)
                 init_local_v2(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, ins_mat_r, del_mat_r, t_sc_mat_r, t_ins_mat_r, t_del_mat_r, N, M);
+            QueryPerformanceCounter(&end);
+            per_init = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
             if (mode == 0) {
                 QueryPerformanceCounter(&start);
@@ -851,9 +863,15 @@ int main()
                 QueryPerformanceCounter(&end);
                 double elapsed1 = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
+                QueryPerformanceCounter(&start);
                 traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
+                QueryPerformanceCounter(&end);
+                per_trace = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
                 myArray[index_prot][3] = to_string(elapsed1);
                 top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indexes);
+                myArray[index_prot][0] = to_string(per_trace);
+                myArray[index_prot][1] = to_string(per_setup);
+                myArray[index_prot][2] = to_string(per_init);
                 //write_to_excel(index_dna, index_prot);
                 total_r += elapsed1;
                 cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed1 << endl;
@@ -865,21 +883,26 @@ int main()
                     QueryPerformanceCounter(&end);
                     double elapsed = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
 
+                    QueryPerformanceCounter(&start);
                     traceV2_1d_check(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
+                    QueryPerformanceCounter(&end);
+                    per_trace += (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
                     myArray[index_prot][3] = to_string(elapsed+elapsed1);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << elapsed+elapsed1 << endl;
                     total_r += elapsed;
                     cout << "Total runtime: " << total_r << endl;
 
                     if (index[0] >= index_r[0]) {
-                        myArray[index_prot][0] = to_string(index[0]);
-                        myArray[index_prot][1] = to_string(index[3]);
-                        myArray[index_prot][2] = to_string(index[2]);
+                        myArray[index_prot][0] = to_string(per_trace);
+                        myArray[index_prot][1] = to_string(per_setup);
+                        myArray[index_prot][2] = to_string(per_init);
+                        cout << index[0] << endl;
                     }
                     else {
-                        myArray[index_prot][0] = to_string(index_r[0]);
-                        myArray[index_prot][1] = to_string(index_r[3]);
-                        myArray[index_prot][2] = to_string(index_r[2]);
+                        myArray[index_prot][0] = to_string(per_trace);
+                        myArray[index_prot][1] = to_string(per_setup);
+                        myArray[index_prot][2] = to_string(per_init);
+                        cout << index_r[0] << endl;
                         top5(index_r[0], index_prot, index_r[1], index_r[2], top_scores, top_i, top_j, top_indexes);
                     }
                     write_to_excel(index_dna, index_prot);
@@ -887,6 +910,7 @@ int main()
             }
             else if (mode == 1) {
               
+                QueryPerformanceCounter(&start);
                 char* d_DNA_sequence;
                 char* d_protein_sequence;
                 char* d_DNA_sequence_r;
@@ -963,6 +987,9 @@ int main()
                 checkCudaErrors(cudaMemcpy(d_t_sc_mat_r, t_sc_mat_r, size, cudaMemcpyHostToDevice));
                 checkCudaErrors(cudaMemcpy(d_t_ins_mat_r, t_ins_mat_r, size, cudaMemcpyHostToDevice));
                 checkCudaErrors(cudaMemcpy(d_t_del_mat_r, t_del_mat_r, size, cudaMemcpyHostToDevice));
+
+                QueryPerformanceCounter(&end);
+                per_setup += (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
                 
                 dim3 blockDimMain(32, 32);
 
@@ -992,14 +1019,22 @@ int main()
                     checkCudaErrors(cudaStreamSynchronize(stream1));
 
                     timer.Stop();
-
+                    
+                    
                     checkCudaErrors(cudaStreamDestroy(stream1));
+                    
+                    QueryPerformanceCounter(&start);
                     checkCudaErrors(cudaMemcpy(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost));
                     checkCudaErrors(cudaMemcpy(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost));
 
                     traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
+                    QueryPerformanceCounter(&end);
+                    per_trace = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
                     myArray[index_prot][3] = to_string(timer.Elapsed());
+                    myArray[index_prot][0] = to_string(per_trace);
+                    myArray[index_prot][1] = to_string(per_setup);
+                    myArray[index_prot][2] = to_string(per_init);
                     //write_to_excel(index_dna, index_prot);
                     top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indexes);
                     total_r += timer.Elapsed();
@@ -1031,9 +1066,11 @@ int main()
 
                     timer.Stop();
 
+
                     checkCudaErrors(cudaStreamDestroy(stream1));
                     checkCudaErrors(cudaStreamDestroy(stream2));
 
+                    QueryPerformanceCounter(&start);
                     checkCudaErrors(cudaMemcpy(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost));
                     checkCudaErrors(cudaMemcpy(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost));
 
@@ -1041,25 +1078,32 @@ int main()
                     checkCudaErrors(cudaMemcpy(t_sc_mat_r, d_t_sc_mat_r, size, cudaMemcpyDeviceToHost));
 
                     traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
+                    QueryPerformanceCounter(&end);
+                    per_trace = (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
+
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
                     myArray[index_prot][3] = to_string(timer.Elapsed());
 
+                    QueryPerformanceCounter(&start);
                     traceV2_1d_check(c_DNA_sequence_r, c_protein_sequence, sc_mat_r, t_sc_mat_r, N, M, index_prot, index_r);
+                    QueryPerformanceCounter(&end);
+                    per_trace += (end.QuadPart - start.QuadPart) * 1000.0 / freq.QuadPart;
+
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
                     
                     total_r += timer.Elapsed();
                     cout << "Total runtime: " << total_r << endl;
 
                     if (index[0] >= index_r[0]) {
-                        myArray[index_prot][0] = to_string(index[0]);
-                        myArray[index_prot][1] = to_string(index[3]);
-                        myArray[index_prot][2] = to_string(index[2]);
+                        myArray[index_prot][0] = to_string(per_trace);
+                        myArray[index_prot][1] = to_string(per_setup);
+                        myArray[index_prot][2] = to_string(per_init);
                         top5(index[0], index_prot, index[1], index[2], top_scores, top_i, top_j, top_indexes);
                     }
                     else {
-                        myArray[index_prot][0] = to_string(index_r[0]);
-                        myArray[index_prot][1] = to_string(index_r[3]);
-                        myArray[index_prot][2] = to_string(index_r[2]);
+                        myArray[index_prot][0] = to_string(per_trace);
+                        myArray[index_prot][1] = to_string(per_setup);
+                        myArray[index_prot][2] = to_string(per_init);
                         top5(index_r[0], index_prot, index_r[1], index_r[2], top_scores, top_i, top_j, top_indexes);
                     }
 
