@@ -908,7 +908,7 @@ int main()
                 int* d_t_del_mat_r;
 
                 cudaStream_t stream1, stream2;
-                checkCudaErrors(cudaStreamCreate(&stream1));
+                cudaStreamCreate(&stream1);
                 if (frame == 6)
                      cudaStreamCreate(&stream2);
 
@@ -936,33 +936,33 @@ int main()
                  cudaMalloc(&d_t_ins_mat_r, size);
                  cudaMalloc(&d_t_del_mat_r, size);
 
-                 cudaMemset(d_sc_mat, 0, size);
-                 cudaMemset(d_ins_mat, 0, size);
-                 cudaMemset(d_del_mat, 0, size);
-                 cudaMemset(d_t_sc_mat, 0, size);
-                 cudaMemset(d_t_ins_mat, 0, size);
-                 cudaMemset(d_t_del_mat, 0, size);
+                 cudaMemsetAsync(d_sc_mat, 0, size);
+                 cudaMemsetAsync(d_ins_mat, 0, size);
+                 cudaMemsetAsync(d_del_mat, 0, size);
+                 cudaMemsetAsync(d_t_sc_mat, 0, size);
+                 cudaMemsetAsync(d_t_ins_mat, 0, size);
+                 cudaMemsetAsync(d_t_del_mat, 0, size);
 
-                 cudaMemset(d_sc_mat_r, 0, size);
-                 cudaMemset(d_ins_mat_r, 0, size);
-                 cudaMemset(d_del_mat_r, 0, size);
-                 cudaMemset(d_t_sc_mat_r, 0, size);
-                 cudaMemset(d_t_ins_mat_r, 0, size);
-                 cudaMemset(d_t_del_mat_r, 0, size);
+                 cudaMemsetAsync(d_sc_mat_r, 0, size);
+                 cudaMemsetAsync(d_ins_mat_r, 0, size);
+                 cudaMemsetAsync(d_del_mat_r, 0, size);
+                 cudaMemsetAsync(d_t_sc_mat_r, 0, size);
+                 cudaMemsetAsync(d_t_ins_mat_r, 0, size);
+                 cudaMemsetAsync(d_t_del_mat_r, 0, size);
 
-                 cudaMemcpy(d_sc_mat, sc_mat, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_ins_mat, ins_mat, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_del_mat, del_mat, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_t_sc_mat, t_sc_mat, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_t_ins_mat, t_ins_mat, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_t_del_mat, t_del_mat, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_sc_mat, sc_mat, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_ins_mat, ins_mat, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_del_mat, del_mat, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_t_sc_mat, t_sc_mat, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_t_ins_mat, t_ins_mat, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_t_del_mat, t_del_mat, size, cudaMemcpyHostToDevice);
 
-                 cudaMemcpy(d_sc_mat_r, sc_mat_r, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_ins_mat_r, ins_mat_r, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_del_mat_r, del_mat_r, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_t_sc_mat_r, t_sc_mat_r, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_t_ins_mat_r, t_ins_mat_r, size, cudaMemcpyHostToDevice);
-                 cudaMemcpy(d_t_del_mat_r, t_del_mat_r, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_sc_mat_r, sc_mat_r, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_ins_mat_r, ins_mat_r, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_del_mat_r, del_mat_r, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_t_sc_mat_r, t_sc_mat_r, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_t_ins_mat_r, t_ins_mat_r, size, cudaMemcpyHostToDevice);
+                 cudaMemcpyAsync(d_t_del_mat_r, t_del_mat_r, size, cudaMemcpyHostToDevice);
                 
                 dim3 blockDimMain(32, 32);
 
@@ -994,8 +994,8 @@ int main()
                     timer.Stop();
 
                      cudaStreamDestroy(stream1);
-                     cudaMemcpy(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost);
-                     cudaMemcpy(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost);
+                     cudaMemcpyAsync(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost);
+                     cudaMemcpyAsync(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost);
 
                     traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
@@ -1033,12 +1033,13 @@ int main()
 
                      cudaStreamDestroy(stream1);
                      cudaStreamDestroy(stream2);
+                     cudaDeviceSynchronize();
 
-                     cudaMemcpy(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost);
-                     cudaMemcpy(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost);
+                     cudaMemcpyAsync(sc_mat, d_sc_mat, size, cudaMemcpyDeviceToHost);
+                     cudaMemcpyAsync(t_sc_mat, d_t_sc_mat, size, cudaMemcpyDeviceToHost);
 
-                     cudaMemcpy(sc_mat_r, d_sc_mat_r, size, cudaMemcpyDeviceToHost);
-                     cudaMemcpy(t_sc_mat_r, d_t_sc_mat_r, size, cudaMemcpyDeviceToHost);
+                     cudaMemcpyAsync(sc_mat_r, d_sc_mat_r, size, cudaMemcpyDeviceToHost);
+                     cudaMemcpyAsync(t_sc_mat_r, d_t_sc_mat_r, size, cudaMemcpyDeviceToHost);
 
                     traceV2_1d_check(c_DNA_sequence, c_protein_sequence, sc_mat, t_sc_mat, N, M, index_prot, index);
                     cout << "Run DNA: " << index_dna << " Prot: " << index_prot << endl << "Time in ms: " << timer.Elapsed() << endl;
@@ -1251,19 +1252,19 @@ int main()
                     checkCudaErrors(cudaMalloc(&d_t_ins_mat_r, size));
                     checkCudaErrors(cudaMalloc(&d_t_del_mat_r, size));
 
-                    checkCudaErrors(cudaMemset(d_sc_mat, 0, size));
-                    checkCudaErrors(cudaMemset(d_ins_mat, 0, size));
-                    checkCudaErrors(cudaMemset(d_del_mat, 0, size));
-                    checkCudaErrors(cudaMemset(d_t_sc_mat, 0, size));
-                    checkCudaErrors(cudaMemset(d_t_ins_mat, 0, size));
-                    checkCudaErrors(cudaMemset(d_t_del_mat, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_sc_mat, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_ins_mat, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_del_mat, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_t_sc_mat, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_t_ins_mat, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_t_del_mat, 0, size));
 
-                    checkCudaErrors(cudaMemset(d_sc_mat_r, 0, size));
-                    checkCudaErrors(cudaMemset(d_ins_mat_r, 0, size));
-                    checkCudaErrors(cudaMemset(d_del_mat_r, 0, size));
-                    checkCudaErrors(cudaMemset(d_t_sc_mat_r, 0, size));
-                    checkCudaErrors(cudaMemset(d_t_ins_mat_r, 0, size));
-                    checkCudaErrors(cudaMemset(d_t_del_mat_r, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_sc_mat_r, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_ins_mat_r, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_del_mat_r, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_t_sc_mat_r, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_t_ins_mat_r, 0, size));
+                    checkCudaErrors(cudaMemsetAsync(d_t_del_mat_r, 0, size));
 
                     checkCudaErrors(cudaMemcpy(d_sc_mat, sc_mat, size, cudaMemcpyHostToDevice));
                     checkCudaErrors(cudaMemcpy(d_ins_mat, ins_mat, size, cudaMemcpyHostToDevice));
