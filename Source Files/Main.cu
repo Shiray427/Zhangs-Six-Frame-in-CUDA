@@ -882,7 +882,7 @@ int main()
                         myArray[index_prot][2] = to_string(index_r[2]);
                         top5(index_r[0], index_prot, index_r[1], index_r[2], top_scores, top_i, top_j, top_indexes);
                     }
-                    write_to_excel(index_dna, index_prot);
+                    //write_to_excel(index_dna, index_prot);
 				}
             }
             else if (mode == 1) {
@@ -1063,7 +1063,7 @@ int main()
                         top5(index_r[0], index_prot, index_r[1], index_r[2], top_scores, top_i, top_j, top_indexes);
                     }
 
-                    write_to_excel(index_dna, index_prot);
+                    //write_to_excel(index_dna, index_prot);
 
 				}
 
