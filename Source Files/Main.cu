@@ -798,7 +798,7 @@ int main()
         LARGE_INTEGER freq, start, end;
         QueryPerformanceFrequency(&freq);
 
-        for (int index_prot = 0; index_prot < proteinInputs.size(); index_prot++) {
+        for (int index_prot = 0; index_prot < 4096; index_prot++) {
             
 			DNA_sequence = dnaInputs[index_dna];
 			protein_sequence = proteinInputs[index_prot];
