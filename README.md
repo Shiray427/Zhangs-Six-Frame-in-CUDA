@@ -1,4 +1,4 @@
-# Zhang’s Six-Frame in CUDA (TARA CUDA)
+# Zhang’s Six-Frame in CUDA (TARA CUDA) (2025)
 **Proponents**:
 - Arceta, Althea Zyrie
 - Mendoza, Antonio Gabriel
