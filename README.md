@@ -12,7 +12,7 @@ This repository contains the source code, datasets, and documentation for the th
 
 Benchmark results show that the CUDA implementation achieved an average speedup of **3.51×** (maximum **6.03×**) on the fruit fly dataset, and an average of **3.44×** (maximum **6.44×**) on the mouse-ear cress dataset, relative to the sequential version. When compared against the SIMD implementation, the CUDA approach achieved an average speedup of **3.14×**, confirming CUDA’s viability as an alternative paradigm for accelerating sequence alignment.  
 
-Additional project resources, including a YouTube playlist for further explanation and extra testing files, are available at the following links: [YouTube link](https://www.youtube.com/playlist?list=PLd3yBvnKNYJz0m9w5AXMP8xE9ouf9FWKY), [testing files link](https://drive.google.com/file/d/1S2R2l6vqMVZZe0y8jz0rz5kFnrIZNySb/view?usp=sharing).
+Additional project resources, including a YouTube playlist for further explanation and additional testing files, are available at the following links: [YouTube link](https://www.youtube.com/playlist?list=PLd3yBvnKNYJz0m9w5AXMP8xE9ouf9FWKY), [additonal files link](https://drive.google.com/file/d/1S2R2l6vqMVZZe0y8jz0rz5kFnrIZNySb/view?usp=sharing).
 
 ---
 
